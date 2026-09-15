@@ -126,7 +126,9 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
     materials_dir = os.path.join(output_dir, "Materials")
     textures_dir = os.path.join(output_dir, "Textures")
-    for d in (materials_dir, textures_dir):
+    models_dir = os.path.join(output_dir, "Models")
+    prefabs_dir = os.path.join(output_dir, "Prefabs")
+    for d in (materials_dir, textures_dir, models_dir, prefabs_dir):
         if not os.path.isdir(d):
             os.makedirs(d)
 
@@ -180,14 +182,15 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
         debug.log("Item: transform=%s shape=%s prefab=%s" % (t, shape, prefab_name))
 
-        fbx_path = os.path.join(output_dir, prefab_name + ".fbx")
+        fbx_path = os.path.join(models_dir, prefab_name + ".fbx")
         _export_fbx(t, fbx_path)
 
+        transform_leaf = t.split('|')[-1] if t else None
         parsed_mesh = _read_fbx_mesh_name(fbx_path)
         if parsed_mesh is None:
-            # 二进制 FBX 无法文本解析；Maya FBX 导出的 mesh 名即 shape 名，fallback 正确
-            debug.log("FBX is binary; use shape name as mesh name: %s" % (shape or prefab_name))
-        mesh_name = parsed_mesh or shape or prefab_name
+            # 二进制 FBX 无法文本解析；Maya FBX 导出的 mesh 节点名 = transform 名（无 Shape 后缀）
+            debug.log("FBX is binary; use transform name as mesh name: %s" % (transform_leaf or prefab_name))
+        mesh_name = parsed_mesh or transform_leaf or prefab_name
         debug.log("  FBX mesh name: %s" % mesh_name)
         _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
 
@@ -197,7 +200,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         debug.log("  fbx_guid=%s prefab_guid=%s material=%s" % (
             fbx_guid, prefab_guid, material.name if material else "(none)"))
 
-        prefab_path = os.path.join(output_dir, prefab_name + ".prefab")
+        prefab_path = os.path.join(prefabs_dir, prefab_name + ".prefab")
         _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guid))
         _write_text(prefab_path + ".meta", yaml_writer.prefab_meta(prefab_guid))
 

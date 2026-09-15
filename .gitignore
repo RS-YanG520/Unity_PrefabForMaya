@@ -51,3 +51,4 @@ Thumbs.db
 
 # === Maya 插件导出调试日志（每次导出重新生成） ===
 export_report.log
+export_report.log.meta

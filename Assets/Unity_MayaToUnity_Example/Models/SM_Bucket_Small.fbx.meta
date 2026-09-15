@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 9f50a17d83474c50e04df13c507b7348
+guid: c59f147191f4b631f938851afb801392
 ModelImporter:
   serializedVersion: 23
   fileIDToRecycleName:
@@ -7,8 +7,8 @@ ModelImporter:
     400000: //RootNode
     2300000: //RootNode
     3300000: //RootNode
-    4300000: SM_Bucket_Small_2Shape
-    4300002: SM_Bucket_Small_2Shape
+    4300000: SM_Bucket_Small_1
+    4300002: SM_Bucket_Small_1
   externalObjects: {}
   materials:
     importMaterials: 0

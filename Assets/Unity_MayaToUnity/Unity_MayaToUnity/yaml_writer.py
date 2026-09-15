@@ -249,6 +249,9 @@ def material_file(material):
         main_tex = "        m_Texture: {fileID: 0}\n"
 
     r, g, b, a = material.color
+    if material.albedo_texture:
+        # 有贴图时，_Color 只作 tint（与 _MainTex 相乘），须为白色，否则会把贴图乘成黑色
+        r, g, b, a = (1.0, 1.0, 1.0, 1.0)
     return (
         "%%YAML 1.1\n"
         "%%TAG !u! tag:unity3d.com,2011:\n"
