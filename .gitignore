@@ -1,0 +1,54 @@
+# === Unity 生成的文件夹（无需提交，Unity 会自动重建） ===
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# === IDE / 工具缓存 ===
+/.vs/
+/.idea/
+/.gradle/
+/.consulo/
+
+# === 自动生成的项目文件（Unity 打开项目时会重新生成） ===
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity 针对 pidb/pdb/mdb 生成的 meta（普通资源的 .meta 必须提交，不可忽略）
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# === 构建产物 ===
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# 崩溃报告
+sysinfo.txt
+
+# === Unreal 插件编译产物（可重新编译生成） ===
+/Assets/UnrealToUnity/Binaries/
+/Assets/UnrealToUnity/Intermediate/
+
+# === 操作系统 ===
+.DS_Store
+Thumbs.db
