@@ -20,6 +20,11 @@
     Unity_MayaToUnity.export(r"D:\\UnityProject\\Assets\\GeneratedPrefabs")
 
   选中对象时只导出选中；不选时导出整个场景。
+
+  调试：
+    Unity_MayaToUnity.set_debug(True)   # 开启导出日志（控制台实时打印）
+    Unity_MayaToUnity.diagnose()        # dry-run 诊断场景（不导出）
+    导出的 <输出目录>/export_report.log 始终写入完整日志。
 """
 from __future__ import print_function
 
@@ -27,6 +32,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 
 from exporter import export
+import debug
 
 
 MENU_NAME = "unity_maya_to_unity_menu"
@@ -63,6 +69,32 @@ def install_menu():
         cmds.deleteUI(MENU_NAME)
     cmds.menu(MENU_NAME, label=MENU_LABEL, parent=main, tearOff=True)
     cmds.menuItem(label="导出到 Unity 项目...", command=lambda *_: _export_with_dialog())
+    cmds.menuItem(label="诊断当前场景...", command=lambda *_: diagnose())
+    cmds.menuItem(divider=True)
+    cmds.menuItem(label="开启调试日志", checkBox=False, command=_toggle_debug)
+
+
+def set_debug(enabled):
+    """开启 / 关闭调试日志（控制台实时打印）。"""
+    debug.set_debug(enabled)
+
+
+def diagnose():
+    """dry-run 诊断当前场景（不导出），结果打印到脚本编辑器并弹窗提示。"""
+    selection = cmds.ls(selection=True) or None
+    debug.diagnose_scene(selection)
+    cmds.confirmDialog(
+        title="场景诊断",
+        message="诊断报告已打印到脚本编辑器。",
+        button=["确定"],
+        defaultButton="确定",
+        cancelButton="确定",
+        dismissString="确定",
+    )
+
+
+def _toggle_debug(state, *_):
+    debug.set_debug(bool(state))
 
 
 def _auto_install():

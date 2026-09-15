@@ -67,6 +67,12 @@ Unity_MayaToUnity.export(
 )
 ```
 
+## 调试
+
+- **诊断场景（dry-run）**：菜单「诊断当前场景...」，或脚本里 `Unity_MayaToUnity.diagnose()`。不导出，打印实例组 / 唯一网格 / 材质 / 贴图及坐标预览。
+- **开启调试日志**：菜单勾选「开启调试日志」，或 `Unity_MayaToUnity.set_debug(True)`。导出过程实时打印关键信息（实例组、mesh 名、GUID、材质映射等）。
+- **诊断报告文件**：每次导出都会在输出目录写一份 `export_report.log`，记录完整过程。排查「mesh 丢失 / 材质紫色」时优先看它——尤其核对 `FBX mesh 名` 是否与 `.meta` 里 `fileIDToRecycleName` 的 key 一致。
+
 ## 输出结构
 
 ```
@@ -82,6 +88,7 @@ Unity_MayaToUnity.export(
     <贴图>.<ext>
     <贴图>.<ext>.meta
   MayaToUnity.unity   # 场景：Prefab 实例按 Maya 世界变换摆放
+  export_report.log   # 诊断日志（每次导出始终写入）
 ```
 
 ## 原理要点

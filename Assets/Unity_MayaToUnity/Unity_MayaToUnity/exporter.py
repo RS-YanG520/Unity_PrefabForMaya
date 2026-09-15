@@ -22,6 +22,7 @@ from coords import transform_to_unity
 from instance_detector import analyze, strip_trailing_digits
 from material_mapper import collect_materials
 import yaml_writer
+import debug
 
 
 def _write_text(path, text):
@@ -114,6 +115,11 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
     _load_fbx_plugin()
 
+    debug.clear_log()
+    debug.log("开始导出 -> %s" % output_dir)
+    debug.log("范围: %s" % ("选中对象" if selection else "整个场景"))
+    debug.log("调试模式: %s" % ("开" if debug.DEBUG else "关"))
+
     # 1. 材质 / 贴图
     materials, textures = collect_materials()
     for m in materials:
@@ -121,10 +127,13 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     for t in textures:
         t.guid = guid_from_string("tex:" + t.name)
 
+    debug.log("材质 %d 个, 贴图 %d 个" % (len(materials), len(textures)))
+
     shape_mat = _shape_to_material(materials)
 
     # 2. 实例分析
     groups, singletons = analyze(selection)
+    debug.log("实例组 %d 个, 唯一网格 %d 个" % (len(groups), len(singletons)))
 
     # 3. 组装导出项（去重 Prefab 名）
     used = {}
@@ -152,15 +161,23 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         fbx_guid = guid_from_string("fbx:" + prefab_name)
         prefab_guid = guid_from_string("prefab:" + prefab_name)
 
+        debug.log("导出项: transform=%s shape=%s prefab=%s" % (t, shape, prefab_name))
+
         fbx_path = os.path.join(output_dir, prefab_name + ".fbx")
         _export_fbx(t, fbx_path)
 
-        mesh_name = _read_fbx_mesh_name(fbx_path) or shape or prefab_name
+        parsed_mesh = _read_fbx_mesh_name(fbx_path)
+        if parsed_mesh is None:
+            debug.log("无法解析 FBX 内 mesh 名，回退到 shape 名: %s" % (shape or prefab_name), warn=True)
+        mesh_name = parsed_mesh or shape or prefab_name
+        debug.log("  FBX mesh 名: %s" % mesh_name)
         _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
 
         shape_key = shape.split('|')[-1] if shape else None
         material = shape_mat.get(shape_key)
         material_guid = material.guid if material else None
+        debug.log("  fbx_guid=%s prefab_guid=%s material=%s" % (
+            fbx_guid, prefab_guid, material.name if material else "(无)"))
 
         prefab_path = os.path.join(output_dir, prefab_name + ".prefab")
         _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guid))
@@ -212,8 +229,17 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         instance_id += 1
         transform_id += 1
 
+    debug.log("场景实例 %d 个" % len(ordered))
+
     scene_path = os.path.join(output_dir, scene_name + ".unity")
     _write_text(scene_path, yaml_writer.scene_file("".join(blocks)))
     generated.append(scene_path)
+
+    # 写诊断报告（始终写入，排查问题有据可查）
+    report_path = os.path.join(output_dir, "export_report.log")
+    _write_text(report_path, debug.get_report())
+    generated.append(report_path)
+
+    debug.log("导出完成, 共 %d 个文件" % len(generated))
 
     return generated
