@@ -74,9 +74,3 @@ Assets/Unity_PrefabForMaya/
 - **覆盖**：用新 Prefab 覆盖旧的。
 - **跳过**：跳过本次生成，保留旧文件。
 - **重命名**：用 `AssetDatabase.GenerateUniqueAssetPath` 自动加数字后缀，另存一个新 Prefab。
-
----
-
-## 相关参考
-
-- [../UnrealToUnity](../UnrealToUnity)：一个 Unreal → Unity 的 C++ 导出插件，同样实现了「识别相同组件 → Prefab 实例化」的思路，但其实例判定靠「组件类型 + Mesh/材质指针」，与本插件靠「几何签名」形成对照。详见其目录下的 `UnrealToUnity_插件功能分析.md`。
