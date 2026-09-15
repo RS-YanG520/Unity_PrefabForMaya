@@ -250,8 +250,8 @@ def material_file(material):
 
     r, g, b, a = material.color
     return (
-        "%YAML 1.1\n"
-        "%TAG !u! tag:unity3d.com,2011:\n"
+        "%%YAML 1.1\n"
+        "%%TAG !u! tag:unity3d.com,2011:\n"
         "--- !u!21 &%d\n"
         "Material:\n"
         "  serializedVersion: 8\n"
@@ -325,8 +325,8 @@ def prefab_file(prefab_name, fbx_guid, material_guid):
         material_ref = "  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}\n"
 
     return (
-        "%YAML 1.1\n"
-        "%TAG !u! tag:unity3d.com,2011:\n"
+        "%%YAML 1.1\n"
+        "%%TAG !u! tag:unity3d.com,2011:\n"
         "--- !u!1 &%d\n"
         "GameObject:\n"
         "  m_ObjectHideFlags: 0\n"

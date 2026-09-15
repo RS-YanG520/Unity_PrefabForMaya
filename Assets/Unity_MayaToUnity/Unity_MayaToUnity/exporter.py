@@ -43,7 +43,8 @@ def _export_fbx(node, out_path):
     orig = cmds.ls(selection=True)
     cmds.select(node, r=True)
     try:
-        cmds.FBXExport(f=out_path, s=True)
+        # FBXExport 的 -s 是纯标志位，经 cmds 传布尔值会报语法错误；改用 file 命令
+        cmds.file(out_path, force=True, exportSelected=True, type="FBX export")
     finally:
         if orig:
             cmds.select(orig, r=True)
@@ -74,17 +75,33 @@ def _read_fbx_mesh_name(fbx_path):
 def _shape_to_material(materials):
     """建立 shape 短名 -> Material 的映射（通过 shadingEngine 成员反查）。"""
     result = {}
+    mat_by_name = {m.name: m for m in materials}
     for se in cmds.ls(type='shadingEngine'):
         mats = cmds.listConnections(se + '.surfaceShader') or []
         if not mats:
             continue
         leaf = mats[0].split('|')[-1]
-        mat = next((m for m in materials if m.name == leaf), None)
+        mat = mat_by_name.get(leaf)
+        members = cmds.sets(se, q=True) or []
+        debug.log("SG %s -> material=%s, members=%s" % (se, leaf, members))
         if mat is None:
+            debug.log("  material %s not in collected list %s" % (leaf, sorted(mat_by_name.keys())))
             continue
-        for member in cmds.sets(se, q=True) or []:
-            if cmds.nodeType(member) == 'mesh':
-                result[member.split('|')[-1]] = mat
+        for member in members:
+            # member 可能是 "transform.f[0:N]"（Maya 省略 shape 名，前缀是 transform），
+            # 也可能是 "shape.f[0:N]" 或纯 "shape"；统一解析出 shape 短名
+            node = member.split('.')[0].split('|')[-1]
+            node_type = cmds.nodeType(node)
+            if node_type == 'mesh':
+                shape_names = [node]
+            elif node_type == 'transform':
+                shape_names = [s.split('|')[-1] for s in (
+                    cmds.listRelatives(node, shapes=True, noIntermediate=True) or [])]
+            else:
+                continue
+            for shape_name in shape_names:
+                result[shape_name] = mat
+                debug.log("  mapped %s -> %s" % (shape_name, leaf))
     return result
 
 
@@ -168,7 +185,8 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
         parsed_mesh = _read_fbx_mesh_name(fbx_path)
         if parsed_mesh is None:
-            debug.log("Cannot parse FBX mesh name, fallback to shape: %s" % (shape or prefab_name), warn=True)
+            # 二进制 FBX 无法文本解析；Maya FBX 导出的 mesh 名即 shape 名，fallback 正确
+            debug.log("FBX is binary; use shape name as mesh name: %s" % (shape or prefab_name))
         mesh_name = parsed_mesh or shape or prefab_name
         debug.log("  FBX mesh name: %s" % mesh_name)
         _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
