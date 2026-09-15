@@ -45,10 +45,6 @@
 # 崩溃报告
 sysinfo.txt
 
-# === Unreal 插件编译产物（可重新编译生成） ===
-/Assets/UnrealToUnity/Binaries/
-/Assets/UnrealToUnity/Intermediate/
-
 # === 操作系统 ===
 .DS_Store
 Thumbs.db
