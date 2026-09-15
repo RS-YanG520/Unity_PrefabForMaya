@@ -116,9 +116,9 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     _load_fbx_plugin()
 
     debug.clear_log()
-    debug.log("开始导出 -> %s" % output_dir)
-    debug.log("范围: %s" % ("选中对象" if selection else "整个场景"))
-    debug.log("调试模式: %s" % ("开" if debug.DEBUG else "关"))
+    debug.log("Export started -> %s" % output_dir)
+    debug.log("Scope: %s" % ("selection" if selection else "whole scene"))
+    debug.log("Debug mode: %s" % ("on" if debug.DEBUG else "off"))
 
     # 1. 材质 / 贴图
     materials, textures = collect_materials()
@@ -127,13 +127,13 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     for t in textures:
         t.guid = guid_from_string("tex:" + t.name)
 
-    debug.log("材质 %d 个, 贴图 %d 个" % (len(materials), len(textures)))
+    debug.log("Materials: %d, Textures: %d" % (len(materials), len(textures)))
 
     shape_mat = _shape_to_material(materials)
 
     # 2. 实例分析
     groups, singletons = analyze(selection)
-    debug.log("实例组 %d 个, 唯一网格 %d 个" % (len(groups), len(singletons)))
+    debug.log("Instance groups: %d, singletons: %d" % (len(groups), len(singletons)))
 
     # 3. 组装导出项（去重 Prefab 名）
     used = {}
@@ -146,7 +146,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         export_items.append(_make_item(s, shape, strip_trailing_digits(leaf), used))
 
     if not export_items:
-        cmds.warning("Unity_MayaToUnity: 没有可导出的网格。")
+        cmds.warning("Unity_MayaToUnity: no mesh to export.")
         return None
 
     # 4. 每个导出项：FBX + meta + prefab + prefab meta
@@ -161,23 +161,23 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         fbx_guid = guid_from_string("fbx:" + prefab_name)
         prefab_guid = guid_from_string("prefab:" + prefab_name)
 
-        debug.log("导出项: transform=%s shape=%s prefab=%s" % (t, shape, prefab_name))
+        debug.log("Item: transform=%s shape=%s prefab=%s" % (t, shape, prefab_name))
 
         fbx_path = os.path.join(output_dir, prefab_name + ".fbx")
         _export_fbx(t, fbx_path)
 
         parsed_mesh = _read_fbx_mesh_name(fbx_path)
         if parsed_mesh is None:
-            debug.log("无法解析 FBX 内 mesh 名，回退到 shape 名: %s" % (shape or prefab_name), warn=True)
+            debug.log("Cannot parse FBX mesh name, fallback to shape: %s" % (shape or prefab_name), warn=True)
         mesh_name = parsed_mesh or shape or prefab_name
-        debug.log("  FBX mesh 名: %s" % mesh_name)
+        debug.log("  FBX mesh name: %s" % mesh_name)
         _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
 
         shape_key = shape.split('|')[-1] if shape else None
         material = shape_mat.get(shape_key)
         material_guid = material.guid if material else None
         debug.log("  fbx_guid=%s prefab_guid=%s material=%s" % (
-            fbx_guid, prefab_guid, material.name if material else "(无)"))
+            fbx_guid, prefab_guid, material.name if material else "(none)"))
 
         prefab_path = os.path.join(output_dir, prefab_name + ".prefab")
         _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guid))
@@ -207,7 +207,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             try:
                 shutil.copyfile(tex.src_path, dst)
             except Exception as e:
-                cmds.warning("Unity_MayaToUnity: 复制贴图失败 %s: %s" % (tex.src_path, e))
+                cmds.warning("Unity_MayaToUnity: failed to copy texture %s: %s" % (tex.src_path, e))
         _write_text(dst + ".meta", yaml_writer.texture_meta(tex.guid))
         generated.append(dst)
 
@@ -229,7 +229,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         instance_id += 1
         transform_id += 1
 
-    debug.log("场景实例 %d 个" % len(ordered))
+    debug.log("Scene instances: %d" % len(ordered))
 
     scene_path = os.path.join(output_dir, scene_name + ".unity")
     _write_text(scene_path, yaml_writer.scene_file("".join(blocks)))
@@ -240,6 +240,6 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     _write_text(report_path, debug.get_report())
     generated.append(report_path)
 
-    debug.log("导出完成, 共 %d 个文件" % len(generated))
+    debug.log("Export done, %d files" % len(generated))
 
     return generated

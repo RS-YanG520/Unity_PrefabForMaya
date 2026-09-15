@@ -72,33 +72,33 @@ def diagnose_scene(selection=None):
     materials, textures = collect_materials()
 
     lines = []
-    lines.append("========== Unity_MayaToUnity 场景诊断 ==========")
-    lines.append("实例组: %d 组" % len(groups))
+    lines.append("========== Unity_MayaToUnity Scene Diagnosis ==========")
+    lines.append("Instance groups: %d" % len(groups))
     for g in groups:
-        lines.append("  [实例组] prefab=%s  shape=%s  成员=%d" % (g.prefab_name, g.shape, len(g.members)))
+        lines.append("  [Group] prefab=%s  shape=%s  members=%d" % (g.prefab_name, g.shape, len(g.members)))
         for m in g.members:
             pos, rot, scale = transform_to_unity(m)
             lines.append("      - %s" % m)
             lines.append("          pos=%s  rot=%s  scale=%s" % (
                 _fmt_vec3(pos), _fmt_quat(rot), _fmt_vec3(scale)))
 
-    lines.append("唯一网格: %d 个" % len(singletons))
+    lines.append("Singleton meshes: %d" % len(singletons))
     for s in singletons:
         pos, rot, scale = transform_to_unity(s)
-        lines.append("  [唯一] %s  pos=%s  rot=%s  scale=%s" % (
+        lines.append("  [Singleton] %s  pos=%s  rot=%s  scale=%s" % (
             s, _fmt_vec3(pos), _fmt_quat(rot), _fmt_vec3(scale)))
 
-    lines.append("材质: %d 个" % len(materials))
+    lines.append("Materials: %d" % len(materials))
     for m in materials:
-        tex = m.albedo_texture.name if m.albedo_texture else "(无贴图)"
+        tex = m.albedo_texture.name if m.albedo_texture else "(none)"
         lines.append("  - %s  color=%s  metallic=%s  smoothness=%s  tex=%s" % (
             m.name, _fmt_color(m.color), m.metallic, m.smoothness, tex))
 
-    lines.append("贴图: %d 个" % len(textures))
+    lines.append("Textures: %d" % len(textures))
     for t in textures:
         lines.append("  - %s -> %s" % (t.name, t.src_path))
 
-    lines.append("===============================================")
+    lines.append("====================================================")
 
     report = "\n".join(lines)
     print(report)

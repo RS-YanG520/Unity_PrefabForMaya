@@ -25,6 +25,8 @@
     Unity_MayaToUnity.set_debug(True)   # 开启导出日志（控制台实时打印）
     Unity_MayaToUnity.diagnose()        # dry-run 诊断场景（不导出）
     导出的 <输出目录>/export_report.log 始终写入完整日志。
+
+  注意：菜单/弹窗/日志等运行时文案用英文，避免 Maya 中文界面（GBK）显示乱码。
 """
 from __future__ import print_function
 
@@ -40,7 +42,7 @@ MENU_LABEL = "Unity MayaToUnity"
 
 def _pick_output_dir():
     """弹出目录选择框，返回目录路径或 None。"""
-    result = cmds.fileDialog2(dialogStyle=2, fileMode=3, caption="选择 Unity 导出目录")
+    result = cmds.fileDialog2(dialogStyle=2, fileMode=3, caption="Select Unity export folder")
     return result[0] if result else None
 
 
@@ -52,12 +54,12 @@ def _export_with_dialog():
     generated = export(out, selection=selection, scene_name="MayaToUnity")
     if generated:
         cmds.confirmDialog(
-            title="导出完成",
-            message="已导出 %d 个文件到：\n%s" % (len(generated), out),
-            button=["确定"],
-            defaultButton="确定",
-            cancelButton="确定",
-            dismissString="确定",
+            title="Export Complete",
+            message="Exported %d files to:\n%s" % (len(generated), out),
+            button=["OK"],
+            defaultButton="OK",
+            cancelButton="OK",
+            dismissString="OK",
         )
 
 
@@ -65,15 +67,15 @@ def install_menu():
     """在主菜单栏安装「Unity MayaToUnity」菜单。"""
     main = 'MayaWindow'
     if not cmds.window(main, q=True, exists=True):
-        cmds.warning("Unity_MayaToUnity: 未找到主窗口 MayaWindow，无法安装菜单。")
+        cmds.warning("Unity_MayaToUnity: main window 'MayaWindow' not found, cannot install menu.")
         return
     if cmds.menu(MENU_NAME, exists=True):
         cmds.deleteUI(MENU_NAME)
     cmds.menu(MENU_NAME, label=MENU_LABEL, parent=main, tearOff=True)
-    cmds.menuItem(label="导出到 Unity 项目...", command=lambda *_: _export_with_dialog())
-    cmds.menuItem(label="诊断当前场景...", command=lambda *_: diagnose())
+    cmds.menuItem(label="Export to Unity Project...", command=lambda *_: _export_with_dialog())
+    cmds.menuItem(label="Diagnose Scene...", command=lambda *_: diagnose())
     cmds.menuItem(divider=True)
-    cmds.menuItem(label="开启调试日志", checkBox=False, command=_toggle_debug)
+    cmds.menuItem(label="Enable Debug Log", checkBox=False, command=_toggle_debug)
 
 
 def set_debug(enabled):
@@ -86,12 +88,12 @@ def diagnose():
     selection = cmds.ls(selection=True) or None
     debug.diagnose_scene(selection)
     cmds.confirmDialog(
-        title="场景诊断",
-        message="诊断报告已打印到脚本编辑器。",
-        button=["确定"],
-        defaultButton="确定",
-        cancelButton="确定",
-        dismissString="确定",
+        title="Scene Diagnosis",
+        message="Diagnosis report printed to the Script Editor.",
+        button=["OK"],
+        defaultButton="OK",
+        cancelButton="OK",
+        dismissString="OK",
     )
 
 
