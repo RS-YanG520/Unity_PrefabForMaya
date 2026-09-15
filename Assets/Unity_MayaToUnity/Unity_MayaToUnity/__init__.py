@@ -29,7 +29,6 @@
 from __future__ import print_function
 
 import maya.cmds as cmds
-import maya.mel as mel
 
 from exporter import export
 import debug
@@ -64,7 +63,10 @@ def _export_with_dialog():
 
 def install_menu():
     """在主菜单栏安装「Unity MayaToUnity」菜单。"""
-    main = mel.eval('$tmp = $gMainWindow')
+    main = 'MayaWindow'
+    if not cmds.window(main, q=True, exists=True):
+        cmds.warning("Unity_MayaToUnity: 未找到主窗口 MayaWindow，无法安装菜单。")
+        return
     if cmds.menu(MENU_NAME, exists=True):
         cmds.deleteUI(MENU_NAME)
     cmds.menu(MENU_NAME, label=MENU_LABEL, parent=main, tearOff=True)
