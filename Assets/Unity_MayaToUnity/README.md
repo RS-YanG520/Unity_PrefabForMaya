@@ -95,7 +95,7 @@ Unity_MayaToUnity.export(
 
 - **GUID + fileID 引用**：Unity 资源引用靠「GUID + fileID」两要素。插件用名字的 MD5 生成确定性 GUID，fileID 采用固定约定（mesh=4300000、材质=2100000、贴图=2800000、Prefab 源=100100000 等）。
 - **fileIDToRecycleName**：FBX 的 `.meta` 通过该表把 FBX 内 mesh 的 fileID 固定为 4300000，于是 `.prefab` / `.unity` 里能用 `{fileID: 4300000, guid: <fbx guid>, type: 3}` 直接引用，无需复刻 Unity 的名字哈希算法。
-- **坐标转换**：Maya（Y-up、右手系、cm）→ Unity（Y-up、左手系、m）：位置 `(x/100, y/100, -z/100)`，四元数 `(qx, qy, -qz, qw)`，缩放不变。
+- **坐标转换**（已实测）：位置 `(-x/100, y/100, z/100)`；旋转经 X 镜像 + 四元数共轭；缩放取世界矩阵**行**长度。详见 `可行性分析.md` 阶段进度。
 
 ## 当前限制（第一版）
 
@@ -104,3 +104,7 @@ Unity_MayaToUnity.export(
 - 贴图按引用复制，不处理 UV 平铺/偏移与颜色校正节点。
 - 场景生成的是基础摄像机 + 平行光 + Prefab 实例；Maya 里的灯光 / 相机不导出。
 - 命名空间、父子层级（组嵌套）尚未展开处理，建议先塌陷/删除历史再导出。
+
+## 阶段进度（摘要）
+
+第一版主路径已打通并完成坐标对齐回归：实例识别 → 对象空间 FBX → Prefab / 材质 / 场景 YAML。后续重点为层级展开与材质增强，见 `可行性分析.md` §6。
