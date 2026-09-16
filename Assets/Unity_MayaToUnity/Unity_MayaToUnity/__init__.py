@@ -75,12 +75,44 @@ def install_menu():
     cmds.menuItem(label="Export to Unity Project...", command=lambda *_: _export_with_dialog())
     cmds.menuItem(label="Diagnose Scene...", command=lambda *_: diagnose())
     cmds.menuItem(divider=True)
+    cmds.menuItem(label="Reload Plugin Modules", command=lambda *_: reload_modules())
     cmds.menuItem(label="Enable Debug Log", checkBox=False, command=_toggle_debug)
 
 
 def set_debug(enabled):
     """开启 / 关闭调试日志（控制台实时打印）。"""
     debug.set_debug(enabled)
+
+
+def reload_modules():
+    """强制重载本包子模块（改完代码后在 Maya 里先跑这个再导出）。
+
+    注意：不能先删掉 sys.modules['Unity_MayaToUnity'] 再 import，
+    否则会触发 Parent module not found 警告。
+    """
+    import sys
+    doomed = []
+    for k, mod in list(sys.modules.items()):
+        if k == "Unity_MayaToUnity":
+            continue
+        if k.startswith("Unity_MayaToUnity."):
+            doomed.append(k)
+            continue
+        if k in (
+            "exporter", "coords", "constants", "debug",
+            "instance_detector", "material_mapper", "yaml_writer",
+        ):
+            path = getattr(mod, "__file__", "") or ""
+            if "Unity_MayaToUnity" in path.replace("\\", "/"):
+                doomed.append(k)
+    for k in doomed:
+        del sys.modules[k]
+    # 保留包壳，reload 会重新执行 __init__.py 并拉取新子模块
+    import Unity_MayaToUnity as pkg
+    reload(pkg)
+    pkg.install_menu()
+    cmds.warning("Unity_MayaToUnity: modules reloaded.")
+    return True
 
 
 def diagnose():

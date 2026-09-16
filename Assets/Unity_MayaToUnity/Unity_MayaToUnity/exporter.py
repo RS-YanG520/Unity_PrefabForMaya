@@ -16,6 +16,7 @@ import re
 import shutil
 
 import maya.cmds as cmds
+import maya.mel as mel
 
 from constants import guid_from_string
 from coords import transform_to_unity
@@ -23,6 +24,11 @@ from instance_detector import analyze, strip_trailing_digits
 from material_mapper import collect_materials
 import yaml_writer
 import debug
+
+# 世界单位矩阵：导出前把临时物体摆到原点，让 FBX 只存对象空间顶点
+_IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+# 固定临时导出名，避免与场景里已有 SM_Bucket_Small_2 等重名被 Maya 改成 _6
+_TEMP_EXPORT_NAME = "__MTU_Mesh__"
 
 
 def _write_text(path, text):
@@ -38,16 +44,102 @@ def _load_fbx_plugin():
         cmds.loadPlugin('fbxmaya')
 
 
-def _export_fbx(node, out_path):
-    """把单个 transform 导出为 FBX（只导出选中）。"""
-    orig = cmds.ls(selection=True)
-    cmds.select(node, r=True)
+def _mel_quiet(cmd):
+    """执行 MEL，过程不存在时不刷红字（Maya mel 错误常不抛 Python 异常）。"""
+    mel.eval('catchQuiet(`%s`)' % cmd.replace('`', ''))
+
+
+def _configure_fbx_export():
+    """固定 FBX 导出选项，避免轴向/单位把网格再次弄歪。"""
+    for cmd in (
+        'FBXResetExport',
+        'FBXExportUpAxis y',
+        'FBXExportScaleFactor 1.0',
+        'FBXExportConvertUnitString "cm"',
+        'FBXExportBakeComplexAnimation -v false',
+        'FBXExportInputConnections -v false',
+        'FBXExportInstances -v false',
+        'FBXExportUseSceneName -v false',
+    ):
+        _mel_quiet(cmd)
+
+
+def _ensure_unique_mesh(transform):
+    """若 transform 仍是实例（shape 被多个父节点共用），转成独立几何体。
+
+    直接导出实例时，Maya FBX 会把共享同一 shape 的所有 transform 一起展开；
+    必须先变成独立物体，临时副本才能单独导出。
+    """
+    shapes = cmds.listRelatives(transform, shapes=True, noIntermediate=True, fullPath=True) or []
+    shared = False
+    for shape in shapes:
+        if len(cmds.listRelatives(shape, allParents=True) or []) > 1:
+            shared = True
+            break
+    if not shared:
+        return transform
+    cmds.select(transform, r=True)
+    # Maya 2018+：Modify > Convert > Instance to Object
     try:
+        mel.eval('catchQuiet(`ConvertInstanceToObject`)')
+    except Exception:
+        mel.eval('catchQuiet(`convertInstanceToObject`)')
+    sel = cmds.ls(selection=True, type='transform', long=True) or []
+    return sel[0] if sel else transform
+
+
+def _export_fbx(node, out_path, export_name=None):
+    """把单个 transform 导出为对象空间 FBX，不改动原场景节点。
+
+    Maya 导出选中时会把世界变换烘焙进顶点。若带着旋转/缩放导出，FBX 顶点
+    就成了世界坐标，场景再按世界矩阵摆放会双重叠加。实例还会把共享 shape
+    的所有成员一起展开进 FBX。
+
+    做法：复制临时物体 → 转成独立几何 → 解父到世界 → 世界矩阵归零 → 导出 →
+    删除临时物体。不依赖 undo（cmds.file 导出常会冲掉 undo 队列）。
+
+    临时物体固定命名为 __MTU_Mesh__（与场景物体不冲突），返回该短名供
+    .meta 的 fileIDToRecycleName 匹配。export_name 参数保留兼容，已忽略。
+    """
+    orig = cmds.ls(selection=True, long=True)
+    tmp = None
+    used_name = _TEMP_EXPORT_NAME
+    try:
+        # 清掉上次残留
+        if cmds.objExists(used_name):
+            cmds.delete(used_name)
+        tmp = cmds.duplicate(node, returnRootsOnly=True)[0]
+        tmp = cmds.ls(tmp, long=True)[0]
+        if cmds.listRelatives(tmp, parent=True):
+            tmp = cmds.parent(tmp, world=True)[0]
+            tmp = cmds.ls(tmp, long=True)[0]
+        tmp = _ensure_unique_mesh(tmp)
+        tmp = cmds.rename(tmp, used_name)
+        tmp = cmds.ls(tmp, long=True)[0]
+        used_name = tmp.split('|')[-1]
+        # 归零世界变换 + 枢轴，确保导出烘焙后顶点仍是对象空间
+        cmds.xform(tmp, ws=True, matrix=_IDENTITY_MATRIX)
+        try:
+            cmds.xform(tmp, ws=True, pivots=(0, 0, 0))
+        except Exception:
+            pass
+        _configure_fbx_export()
+        cmds.select(tmp, r=True)
         # FBXExport 的 -s 是纯标志位，经 cmds 传布尔值会报语法错误；改用 file 命令
         cmds.file(out_path, force=True, exportSelected=True, type="FBX export")
+        return used_name
     finally:
+        if tmp and cmds.objExists(tmp):
+            cmds.delete(tmp)
+        # 再扫一遍，防止 rename 后路径变化漏删
+        if cmds.objExists(_TEMP_EXPORT_NAME):
+            cmds.delete(_TEMP_EXPORT_NAME)
         if orig:
-            cmds.select(orig, r=True)
+            alive = [n for n in orig if cmds.objExists(n)]
+            if alive:
+                cmds.select(alive, r=True)
+            else:
+                cmds.select(clear=True)
         else:
             cmds.select(clear=True)
 
@@ -168,6 +260,16 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         cmds.warning("Unity_MayaToUnity: no mesh to export.")
         return None
 
+    # 在任何导出操作前缓存 Unity 变换，避免临时复制/删除影响读数
+    unity_xform_by_transform = {}
+    for g in groups:
+        for member in g.members:
+            unity_xform_by_transform[member] = transform_to_unity(member)
+            debug.log("Cache xform %s -> pos=%s" % (member, unity_xform_by_transform[member][0]))
+    for s in singletons:
+        unity_xform_by_transform[s] = transform_to_unity(s)
+        debug.log("Cache xform %s -> pos=%s" % (s, unity_xform_by_transform[s][0]))
+
     # 4. 每个导出项：FBX + meta + prefab + prefab meta
     prefab_guid_by_transform = {}
     generated = []
@@ -183,14 +285,13 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         debug.log("Item: transform=%s shape=%s prefab=%s" % (t, shape, prefab_name))
 
         fbx_path = os.path.join(models_dir, prefab_name + ".fbx")
-        _export_fbx(t, fbx_path)
+        # 临时物体固定名 __MTU_Mesh__，避免与场景节点重名
+        exported_name = _export_fbx(t, fbx_path)
 
-        transform_leaf = t.split('|')[-1] if t else None
         parsed_mesh = _read_fbx_mesh_name(fbx_path)
         if parsed_mesh is None:
-            # 二进制 FBX 无法文本解析；Maya FBX 导出的 mesh 节点名 = transform 名（无 Shape 后缀）
-            debug.log("FBX is binary; use transform name as mesh name: %s" % (transform_leaf or prefab_name))
-        mesh_name = parsed_mesh or transform_leaf or prefab_name
+            debug.log("FBX is binary; use export name as mesh name: %s" % exported_name)
+        mesh_name = parsed_mesh or exported_name or _TEMP_EXPORT_NAME
         debug.log("  FBX mesh name: %s" % mesh_name)
         _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
 
@@ -232,6 +333,12 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         _write_text(dst + ".meta", yaml_writer.texture_meta(tex.guid))
         generated.append(dst)
 
+    # 实例组的每个成员都引用 base 的 prefab（否则场景生成时查不到 guid）
+    for g in groups:
+        base_guid = prefab_guid_by_transform[g.base]
+        for member in g.members:
+            prefab_guid_by_transform[member] = base_guid
+
     # 7. 场景：Prefab 实例按 Maya 世界变换摆放
     blocks = []
     instance_id = 1000
@@ -243,7 +350,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     ordered.extend(singletons)
 
     for t in ordered:
-        pos, rot, scale = transform_to_unity(t)
+        pos, rot, scale = unity_xform_by_transform[t]
         blocks.append(yaml_writer.prefab_instance_block(
             instance_id, transform_id, prefab_guid_by_transform[t],
             t.split('|')[-1], pos, rot, scale))
