@@ -13,20 +13,9 @@
 
 使用（在 Maya 脚本编辑器里）：
     import Unity_MayaToUnity
-    Unity_MayaToUnity.install_menu()          # 在主菜单栏加「Unity MayaToUnity」菜单
+    Unity_MayaToUnity.install_menu()
 
-  或直接调用：
-    import Unity_MayaToUnity
-    Unity_MayaToUnity.export(r"D:\\UnityProject\\Assets\\GeneratedPrefabs")
-
-  选中对象时只导出选中；不选时导出整个场景。
-
-  调试：
-    Unity_MayaToUnity.set_debug(True)   # 开启导出日志（控制台实时打印）
-    Unity_MayaToUnity.diagnose()        # dry-run 诊断场景（不导出）
-    导出的 <输出目录>/export_report.log 始终写入完整日志。
-
-  注意：菜单/弹窗/日志等运行时文案用英文，避免 Maya 中文界面（GBK）显示乱码。
+菜单支持中英文切换（Language / 语言），偏好写入 optionVar mtu_ui_lang。
 """
 from __future__ import print_function
 
@@ -36,15 +25,19 @@ from exporter import export
 import debug
 import material_convert
 from constants import to_maya_ui
+import i18n
 
 
 MENU_NAME = "unity_maya_to_unity_menu"
-MENU_LABEL = "Unity MayaToUnity"
 
 
 def _pick_output_dir():
     """弹出目录选择框，返回目录路径或 None。"""
-    result = cmds.fileDialog2(dialogStyle=2, fileMode=3, caption="Select Unity export folder")
+    result = cmds.fileDialog2(
+        dialogStyle=2,
+        fileMode=3,
+        caption=i18n.tr("dlg_export_caption"),
+    )
     return result[0] if result else None
 
 
@@ -55,28 +48,30 @@ def _export_with_dialog():
     selection = cmds.ls(selection=True) or None
     generated = export(out, selection=selection, scene_name="MayaToUnity")
     if generated:
-        msg = u"Exported %d files to:\n%s" % (len(generated), to_maya_ui(out))
+        msg = i18n.tr("dlg_export_msg", len(generated), to_maya_ui(out))
+        ok = i18n.tr("dlg_ok")
         cmds.confirmDialog(
-            title="Export Complete",
+            title=i18n.tr("dlg_export_title"),
             message=msg,
-            button=["OK"],
-            defaultButton="OK",
-            cancelButton="OK",
-            dismissString="OK",
+            button=[ok],
+            defaultButton=ok,
+            cancelButton=ok,
+            dismissString=ok,
         )
 
 
-def _confirm_report(title, result):
+def _confirm_report(title_key, result):
+    title = i18n.tr(title_key)
     text = to_maya_ui(material_convert._format_report(title, result))
     print(text)
-    # 按字符截断（先转 unicode），避免按字节切开多字节字符导致非法 utf-8
+    ok = i18n.tr("dlg_ok")
     cmds.confirmDialog(
-        title=to_maya_ui(title),
+        title=title,
         message=text[:900],
-        button=["OK"],
-        defaultButton="OK",
-        cancelButton="OK",
-        dismissString="OK",
+        button=[ok],
+        defaultButton=ok,
+        cancelButton=ok,
+        dismissString=ok,
     )
 
 
@@ -84,7 +79,7 @@ def convert_materials_to_pbr():
     """检测并转换材质到 standardSurface / Arnold；选中物体优先，否则全场景。"""
     selection = cmds.ls(selection=True) or None
     result = material_convert.convert_materials_to_pbr(selection)
-    _confirm_report("Convert Materials to PBR", result)
+    _confirm_report("dlg_convert_title", result)
     return result
 
 
@@ -92,33 +87,57 @@ def restore_original_materials():
     """还原到转换前的源材质。"""
     selection = cmds.ls(selection=True) or None
     result = material_convert.restore_original_materials(selection)
-    _confirm_report("Restore Original Materials", result)
+    _confirm_report("dlg_restore_title", result)
     return result
 
 
+def _set_language(lang, *_):
+    i18n.set_lang(lang, rebuild_menu=True)
+
+
 def install_menu():
-    """在主菜单栏安装「Unity MayaToUnity」菜单。"""
-    main = 'MayaWindow'
+    """在主菜单栏安装 Unity MayaToUnity 菜单。"""
+    main = "MayaWindow"
     if not cmds.window(main, q=True, exists=True):
-        cmds.warning("Unity_MayaToUnity: main window 'MayaWindow' not found, cannot install menu.")
+        cmds.warning(i18n.tr("warn_no_main_window"))
         return
     if cmds.menu(MENU_NAME, exists=True):
         cmds.deleteUI(MENU_NAME)
-    cmds.menu(MENU_NAME, label=MENU_LABEL, parent=main, tearOff=True)
-    cmds.menuItem(label="Export to Unity Project...", command=lambda *_: _export_with_dialog())
-    cmds.menuItem(label="Diagnose Scene...", command=lambda *_: diagnose())
+
+    lang = i18n.get_lang()
+    cmds.menu(MENU_NAME, label=i18n.tr("menu_root"), parent=main, tearOff=True)
+    cmds.menuItem(label=i18n.tr("menu_export"), command=lambda *_: _export_with_dialog())
+    cmds.menuItem(label=i18n.tr("menu_diagnose"), command=lambda *_: diagnose())
     cmds.menuItem(divider=True)
     cmds.menuItem(
-        label="Convert Materials to PBR...",
+        label=i18n.tr("menu_convert_pbr"),
         command=lambda *_: convert_materials_to_pbr(),
     )
     cmds.menuItem(
-        label="Restore Original Materials...",
+        label=i18n.tr("menu_restore_mat"),
         command=lambda *_: restore_original_materials(),
     )
     cmds.menuItem(divider=True)
-    cmds.menuItem(label="Reload Plugin Modules", command=lambda *_: reload_modules())
-    cmds.menuItem(label="Enable Debug Log", checkBox=False, command=_toggle_debug)
+    cmds.menuItem(label=i18n.tr("menu_reload"), command=lambda *_: reload_modules())
+    cmds.menuItem(
+        label=i18n.tr("menu_debug"),
+        checkBox=bool(debug.DEBUG),
+        command=_toggle_debug,
+    )
+    cmds.menuItem(divider=True)
+    cmds.menuItem(label=i18n.tr("menu_language"), subMenu=True)
+    cmds.radioMenuItemCollection()
+    cmds.menuItem(
+        label=i18n.tr("lang_en"),
+        radioButton=(lang == "en"),
+        command=lambda *_: _set_language("en"),
+    )
+    cmds.menuItem(
+        label=i18n.tr("lang_zh"),
+        radioButton=(lang == "zh"),
+        command=lambda *_: _set_language("zh"),
+    )
+    cmds.setParent("..", menu=True)
 
 
 def set_debug(enabled):
@@ -143,18 +162,17 @@ def reload_modules():
         if k in (
             "exporter", "coords", "constants", "debug",
             "instance_detector", "material_mapper", "yaml_writer", "hierarchy",
-            "material_convert",
+            "material_convert", "i18n",
         ):
             path = getattr(mod, "__file__", "") or ""
             if "Unity_MayaToUnity" in path.replace("\\", "/"):
                 doomed.append(k)
     for k in doomed:
         del sys.modules[k]
-    # 保留包壳，reload 会重新执行 __init__.py 并拉取新子模块
     import Unity_MayaToUnity as pkg
     reload(pkg)
     pkg.install_menu()
-    print("Unity_MayaToUnity: modules reloaded.")
+    print(i18n.tr("msg_reloaded"))
     return True
 
 
@@ -162,13 +180,14 @@ def diagnose():
     """dry-run 诊断当前场景（不导出），结果打印到脚本编辑器并弹窗提示。"""
     selection = cmds.ls(selection=True) or None
     debug.diagnose_scene(selection)
+    ok = i18n.tr("dlg_ok")
     cmds.confirmDialog(
-        title="Scene Diagnosis",
-        message=to_maya_ui("Diagnosis report printed to the Script Editor."),
-        button=["OK"],
-        defaultButton="OK",
-        cancelButton="OK",
-        dismissString="OK",
+        title=i18n.tr("dlg_diagnose_title"),
+        message=i18n.tr("dlg_diagnose_msg"),
+        button=[ok],
+        defaultButton=ok,
+        cancelButton=ok,
+        dismissString=ok,
     )
 
 

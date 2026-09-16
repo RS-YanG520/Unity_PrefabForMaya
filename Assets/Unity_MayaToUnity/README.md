@@ -48,7 +48,7 @@ import Unity_MayaToUnity
 Unity_MayaToUnity.install_menu()
 ```
 
-主菜单栏会出现 **Unity MayaToUnity → 导出到 Unity 项目...**，点击后弹出目录选择框，选 Unity 项目里的目标目录（例如 `Assets\GeneratedPrefabs`）即可。
+主菜单栏会出现 **Unity MayaToUnity**。菜单底部 **Language / 语言** 可切换中英文（写入 Maya optionVar，下次自动记住）。
 
 ### 方式二：直接调用
 
