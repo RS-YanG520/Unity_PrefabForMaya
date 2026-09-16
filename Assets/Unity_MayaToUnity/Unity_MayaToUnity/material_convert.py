@@ -11,6 +11,8 @@ from __future__ import print_function
 
 import maya.cmds as cmds
 
+from constants import to_maya_ui
+
 # 已符合导出预期的 PBR 类型
 _PBR_TYPES = ("standardSurface", "aiStandardSurface")
 
@@ -196,7 +198,7 @@ def convert_materials_to_pbr(selection=None):
     if not target:
         msg = "No standardSurface or aiStandardSurface node type available."
         result["messages"].append(msg)
-        cmds.warning("Unity_MayaToUnity: " + msg)
+        cmds.warning(to_maya_ui("Unity_MayaToUnity: " + msg))
         return result
 
     pairs = _collect_sg_materials(selection)
@@ -242,7 +244,9 @@ def convert_materials_to_pbr(selection=None):
             result["converted"].append("%s -> %s (%s)" % (backup, new_mat, target))
         except Exception as e:
             result["failed"].append("%s: %s" % (short, e))
-            cmds.warning("Unity_MayaToUnity: convert failed for %s: %s" % (short, e))
+            cmds.warning(to_maya_ui(
+                "Unity_MayaToUnity: convert failed for %s: %s" % (short, e)
+            ))
 
     result["messages"].append(
         "Target=%s  converted=%d  skipped=%d  failed=%d"
@@ -313,7 +317,9 @@ def restore_original_materials(selection=None):
             result["restored"].append(backup)
         except Exception as e:
             result["failed"].append("%s: %s" % (_short(backup), e))
-            cmds.warning("Unity_MayaToUnity: restore failed for %s: %s" % (backup, e))
+            cmds.warning(to_maya_ui(
+                "Unity_MayaToUnity: restore failed for %s: %s" % (backup, e)
+            ))
 
     result["messages"].append(
         "restored=%d  skipped=%d  failed=%d"

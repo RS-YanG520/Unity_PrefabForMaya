@@ -35,6 +35,7 @@ import maya.cmds as cmds
 from exporter import export
 import debug
 import material_convert
+from constants import to_maya_ui
 
 
 MENU_NAME = "unity_maya_to_unity_menu"
@@ -54,9 +55,10 @@ def _export_with_dialog():
     selection = cmds.ls(selection=True) or None
     generated = export(out, selection=selection, scene_name="MayaToUnity")
     if generated:
+        msg = u"Exported %d files to:\n%s" % (len(generated), to_maya_ui(out))
         cmds.confirmDialog(
             title="Export Complete",
-            message="Exported %d files to:\n%s" % (len(generated), out),
+            message=msg,
             button=["OK"],
             defaultButton="OK",
             cancelButton="OK",
@@ -65,10 +67,11 @@ def _export_with_dialog():
 
 
 def _confirm_report(title, result):
-    text = material_convert._format_report(title, result)
+    text = to_maya_ui(material_convert._format_report(title, result))
     print(text)
+    # 按字符截断（先转 unicode），避免按字节切开多字节字符导致非法 utf-8
     cmds.confirmDialog(
-        title=title,
+        title=to_maya_ui(title),
         message=text[:900],
         button=["OK"],
         defaultButton="OK",
@@ -161,7 +164,7 @@ def diagnose():
     debug.diagnose_scene(selection)
     cmds.confirmDialog(
         title="Scene Diagnosis",
-        message="Diagnosis report printed to the Script Editor.",
+        message=to_maya_ui("Diagnosis report printed to the Script Editor."),
         button=["OK"],
         defaultButton="OK",
         cancelButton="OK",

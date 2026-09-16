@@ -18,7 +18,7 @@ import shutil
 import maya.cmds as cmds
 import maya.mel as mel
 
-from constants import guid_from_string
+from constants import guid_from_string, to_maya_ui
 from coords import transform_to_unity_local
 from instance_detector import analyze, strip_trailing_digits
 from hierarchy import build_hierarchy
@@ -266,7 +266,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         export_items.append(_make_item(s_long, shape, strip_trailing_digits(leaf), used))
 
     if not export_items:
-        cmds.warning("Unity_MayaToUnity: no mesh to export.")
+        cmds.warning(to_maya_ui("Unity_MayaToUnity: no mesh to export."))
         return None
 
     # 在任何导出操作前缓存变换；mesh 用 long name 作 key
@@ -354,7 +354,9 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             try:
                 shutil.copyfile(tex.src_path, dst)
             except Exception as e:
-                cmds.warning("Unity_MayaToUnity: failed to copy texture %s: %s" % (tex.src_path, e))
+                cmds.warning(to_maya_ui(
+                    "Unity_MayaToUnity: failed to copy texture %s: %s" % (tex.src_path, e)
+                ))
         _write_text(
             dst + ".meta",
             yaml_writer.texture_meta(
@@ -448,7 +450,9 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
                     guid = v
                     break
         if guid is None:
-            cmds.warning("Unity_MayaToUnity: no prefab guid for %s, skip." % hn.path)
+            cmds.warning(to_maya_ui(
+                "Unity_MayaToUnity: no prefab guid for %s, skip." % hn.path
+            ))
             continue
         pos, rot, scale = transform_to_unity_local(hn.path, hn.parent_path)
         debug.log("Mesh %s local pos=%s parent_tr=%s" % (hn.name, pos, parent_tr))

@@ -34,7 +34,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Glossiness: 0.5
+    - _Glossiness: 0.8999999985098839
     - _Metallic: 0
     - _BumpScale: 1
     - _Parallax: 0.02

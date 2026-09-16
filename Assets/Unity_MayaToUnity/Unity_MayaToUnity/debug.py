@@ -11,6 +11,8 @@ from __future__ import print_function
 
 import maya.cmds as cmds
 
+from constants import to_maya_ui
+
 
 DEBUG = False
 LOG = []
@@ -24,12 +26,13 @@ def set_debug(enabled):
 
 def log(msg, warn=False):
     """记录一条日志；DEBUG 开启时同步打印（warn=True 用 warning 高亮）。"""
+    msg = to_maya_ui(msg)
     LOG.append(msg)
     if DEBUG:
         if warn:
-            cmds.warning("Unity_MayaToUnity: " + msg)
+            cmds.warning(u"Unity_MayaToUnity: " + msg)
         else:
-            print("[Unity_MayaToUnity] " + msg)
+            print(u"[Unity_MayaToUnity] " + msg)
 
 
 def clear_log():

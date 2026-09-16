@@ -45,6 +45,34 @@ def _to_bytes(value):
     return value
 
 
+def to_unicode(value):
+    """把 Maya / Windows 返回的 str 尽量解成 unicode。
+
+    中文版 Maya 常把路径或异常信息以 GBK/mbcs 字节返回；若直接当 UTF-8
+    传给 confirmDialog / warning，会报「收到的字符串不是有效的 utf8 字符串」。
+    """
+    if value is None:
+        return u""
+    if isinstance(value, unicode):
+        return value
+    if not isinstance(value, basestring):
+        try:
+            value = str(value)
+        except Exception:
+            value = repr(value)
+    for enc in ("utf-8", "gbk", "mbcs"):
+        try:
+            return value.decode(enc)
+        except Exception:
+            continue
+    return value.decode("utf-8", "replace")
+
+
+def to_maya_ui(value):
+    """供 cmds.confirmDialog / cmds.warning 使用的安全 unicode 文案。"""
+    return to_unicode(value)
+
+
 def guid_from_string(value):
     """由字符串生成确定性 GUID（32 位十六进制）。
 
