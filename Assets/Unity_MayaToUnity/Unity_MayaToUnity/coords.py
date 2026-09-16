@@ -94,5 +94,80 @@ def matrix_to_unity(m):
 
 
 def transform_to_unity(node):
-    """直接由 Maya 节点名得到 Unity 下的 (position, quaternion, scale)。"""
+    """直接由 Maya 节点名得到 Unity 下的 (position, quaternion, scale)。世界空间。"""
     return matrix_to_unity(world_matrix(node))
+
+
+def _mat4_mul(a, b):
+    """4x4 行主序矩阵乘法：result = a * b。"""
+    out = [0.0] * 16
+    for i in range(4):
+        for j in range(4):
+            out[i * 4 + j] = (
+                a[i * 4 + 0] * b[0 * 4 + j]
+                + a[i * 4 + 1] * b[1 * 4 + j]
+                + a[i * 4 + 2] * b[2 * 4 + j]
+                + a[i * 4 + 3] * b[3 * 4 + j]
+            )
+    return out
+
+
+def _mat4_invert_affine(m):
+    """求仿射 4x4（行主序，最后一列多为 0,0,0,1）的逆。失败返回单位阵。"""
+    # 上 3x3
+    r00, r01, r02 = m[0], m[1], m[2]
+    r10, r11, r12 = m[4], m[5], m[6]
+    r20, r21, r22 = m[8], m[9], m[10]
+    tx, ty, tz = m[12], m[13], m[14]
+
+    det = (
+        r00 * (r11 * r22 - r12 * r21)
+        - r01 * (r10 * r22 - r12 * r20)
+        + r02 * (r10 * r21 - r11 * r20)
+    )
+    if abs(det) < 1e-12:
+        return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    inv_det = 1.0 / det
+
+    i00 = (r11 * r22 - r12 * r21) * inv_det
+    i01 = (r02 * r21 - r01 * r22) * inv_det
+    i02 = (r01 * r12 - r02 * r11) * inv_det
+    i10 = (r12 * r20 - r10 * r22) * inv_det
+    i11 = (r00 * r22 - r02 * r20) * inv_det
+    i12 = (r02 * r10 - r00 * r12) * inv_det
+    i20 = (r10 * r21 - r11 * r20) * inv_det
+    i21 = (r01 * r20 - r00 * r21) * inv_det
+    i22 = (r00 * r11 - r01 * r10) * inv_det
+
+    # t' = -t * R^-1  （行向量）
+    itx = -(tx * i00 + ty * i10 + tz * i20)
+    ity = -(tx * i01 + ty * i11 + tz * i21)
+    itz = -(tx * i02 + ty * i12 + tz * i22)
+
+    return [
+        i00, i01, i02, 0.0,
+        i10, i11, i12, 0.0,
+        i20, i21, i22, 0.0,
+        itx, ity, itz, 1.0,
+    ]
+
+
+def matrix_relative_to(node, ancestor):
+    """node 相对 ancestor 的变换矩阵；ancestor 为 None 时返回世界矩阵。
+
+    行向量约定：M_rel = M_world(node) * inv(M_world(ancestor))
+    """
+    wc = world_matrix(node)
+    if not ancestor:
+        return wc
+    wa = world_matrix(ancestor)
+    return _mat4_mul(wc, _mat4_invert_affine(wa))
+
+
+def transform_to_unity_local(node, parent_path=None):
+    """相对 Unity 父节点的本地 TRS → Unity。
+
+    parent_path：层级中的父节点 fullPath（可能与 Maya 直接父不同，若中间组被跳过）。
+    None 表示挂在场景根，使用世界变换。
+    """
+    return matrix_to_unity(matrix_relative_to(node, parent_path))

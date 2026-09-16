@@ -736,26 +736,90 @@ def scene_header():
     return SCENE_HEADER
 
 
-def prefab_instance_block(instance_id, transform_id, prefab_guid, name, position, rotation, scale):
-    """生成场景里的一个 PrefabInstance（!u!1001）+ 其 stripped Transform（!u!4）。"""
+def empty_gameobject_block(
+    go_id, tr_id, name, parent_tr_id, position, rotation, scale,
+    children_tr_ids, root_order,
+):
+    """生成场景里的空 GameObject + Transform（用于 Maya 组）。"""
+    px, py, pz = position
+    qx, qy, qz, qw = rotation
+    sx, sy, sz = scale
+
+    if children_tr_ids:
+        children_lines = "\n".join(
+            "  - {fileID: %d}" % cid for cid in children_tr_ids
+        )
+        children_block = "  m_Children:\n%s\n" % children_lines
+    else:
+        children_block = "  m_Children: []\n"
+
+    return (
+        "--- !u!1 &%d\n"
+        "GameObject:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  serializedVersion: 6\n"
+        "  m_Component:\n"
+        "  - component: {fileID: %d}\n"
+        "  m_Layer: 0\n"
+        "  m_Name: %s\n"
+        "  m_TagString: Untagged\n"
+        "  m_Icon: {fileID: 0}\n"
+        "  m_NavMeshLayer: 0\n"
+        "  m_StaticEditorFlags: 0\n"
+        "  m_IsActive: 1\n"
+        "--- !u!4 &%d\n"
+        "Transform:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  m_GameObject: {fileID: %d}\n"
+        "  m_LocalRotation: {x: %s, y: %s, z: %s, w: %s}\n"
+        "  m_LocalPosition: {x: %s, y: %s, z: %s}\n"
+        "  m_LocalScale: {x: %s, y: %s, z: %s}\n"
+        "  m_ConstrainProportionsScale: 0\n"
+        "%s"
+        "  m_Father: {fileID: %d}\n"
+        "  m_RootOrder: %d\n"
+        "  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}\n"
+    ) % (
+        go_id, tr_id, name, tr_id, go_id,
+        _f(qx), _f(qy), _f(qz), _f(qw),
+        _f(px), _f(py), _f(pz),
+        _f(sx), _f(sy), _f(sz),
+        children_block,
+        parent_tr_id, root_order,
+    )
+
+
+def prefab_instance_block(
+    instance_id, transform_id, prefab_guid, name, position, rotation, scale,
+    parent_transform_id=0, root_order=0,
+):
+    """生成场景里的一个 PrefabInstance（!u!1001）+ 其 stripped Transform（!u!4）。
+
+    parent_transform_id：父 Transform 的 fileID，0 表示场景根。
+    """
     px, py, pz = position
     qx, qy, qz, qw = rotation
     sx, sy, sz = scale
 
     mods = []
-    # m_Name（指向 Prefab 根 GameObject）
     mods.append(
         "    - target: {fileID: %d, guid: %s, type: 3}\n"
         "      propertyPath: m_Name\n"
         "      value: %s\n"
         "      objectReference: {fileID: 0}\n" % (FILEID_ROOT_GAMEOBJECT, prefab_guid, name)
     )
-    # 位置 / 旋转 / 缩放（指向 Prefab 根 Transform）
     for prop, val in (
         ("m_LocalPosition.x", px), ("m_LocalPosition.y", py), ("m_LocalPosition.z", pz),
         ("m_LocalRotation.x", qx), ("m_LocalRotation.y", qy), ("m_LocalRotation.z", qz),
         ("m_LocalRotation.w", qw),
         ("m_LocalScale.x", sx), ("m_LocalScale.y", sy), ("m_LocalScale.z", sz),
+        ("m_RootOrder", root_order),
     ):
         mods.append(
             "    - target: {fileID: %d, guid: %s, type: 3}\n"
@@ -770,7 +834,7 @@ def prefab_instance_block(instance_id, transform_id, prefab_guid, name, position
         "  m_ObjectHideFlags: 0\n"
         "  serializedVersion: 2\n"
         "  m_Modification:\n"
-        "    m_TransformParent: {fileID: 0}\n"
+        "    m_TransformParent: {fileID: %d}\n"
         "    m_Modifications:\n"
         "%s"
         "    m_RemovedComponents: []\n"
@@ -781,11 +845,12 @@ def prefab_instance_block(instance_id, transform_id, prefab_guid, name, position
         "  m_PrefabInstance: {fileID: %d}\n"
         "  m_PrefabAsset: {fileID: 0}\n"
     ) % (
-        instance_id, "".join(mods), FILEID_PREFAB_SOURCE, prefab_guid,
+        instance_id, parent_transform_id, "".join(mods),
+        FILEID_PREFAB_SOURCE, prefab_guid,
         transform_id, FILEID_ROOT_TRANSFORM, prefab_guid, instance_id,
     )
 
 
-def scene_file(prefab_instance_blocks):
-    """组装完整场景文件：场景模板 + 所有 PrefabInstance。"""
-    return SCENE_HEADER + prefab_instance_blocks
+def scene_file(body_blocks):
+    """组装完整场景文件：场景模板 + 空组 / PrefabInstance 等块。"""
+    return SCENE_HEADER + body_blocks

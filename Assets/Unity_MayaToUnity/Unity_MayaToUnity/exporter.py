@@ -7,7 +7,7 @@
   3. 每个实例组的 base（及每个唯一网格）导出一个 FBX
   4. 解析 FBX 内 mesh 名 → 写 FBX .meta（fileIDToRecycleName 固定 fileID）
   5. 生成 Prefab（.prefab + .meta）、材质（.mat + .meta）、贴图（复制 + .meta）
-  6. 生成场景（.unity，Prefab 实例按 Maya 世界变换摆放）
+  6. 生成场景（.unity：保留组嵌套，Prefab 挂在父 Transform 下）
 """
 from __future__ import print_function
 
@@ -19,8 +19,9 @@ import maya.cmds as cmds
 import maya.mel as mel
 
 from constants import guid_from_string
-from coords import transform_to_unity
+from coords import transform_to_unity_local
 from instance_detector import analyze, strip_trailing_digits
+from hierarchy import build_hierarchy
 from material_mapper import collect_materials
 import yaml_writer
 import debug
@@ -197,6 +198,12 @@ def _shape_to_material(materials):
     return result
 
 
+def _long_name(node):
+    """统一为 Maya long name。"""
+    longs = cmds.ls(node, long=True) or []
+    return longs[0] if longs else node
+
+
 def _make_item(transform, shape, prefab_name, used):
     """构造导出项，并对重名 Prefab 追加序号。"""
     name = prefab_name
@@ -250,29 +257,47 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     used = {}
     export_items = []
     for g in groups:
-        export_items.append(_make_item(g.base, g.shape, g.prefab_name, used))
+        export_items.append(_make_item(
+            _long_name(g.base), g.shape, g.prefab_name, used))
     for s in singletons:
-        leaf = s.split('|')[-1]
-        shape = (cmds.listRelatives(s, shapes=True, noIntermediate=True) or [None])[0]
-        export_items.append(_make_item(s, shape, strip_trailing_digits(leaf), used))
+        s_long = _long_name(s)
+        leaf = s_long.split('|')[-1]
+        shape = (cmds.listRelatives(s_long, shapes=True, noIntermediate=True) or [None])[0]
+        export_items.append(_make_item(s_long, shape, strip_trailing_digits(leaf), used))
 
     if not export_items:
         cmds.warning("Unity_MayaToUnity: no mesh to export.")
         return None
 
-    # 在任何导出操作前缓存 Unity 变换，避免临时复制/删除影响读数
-    unity_xform_by_transform = {}
+    # 在任何导出操作前缓存变换；mesh 用 long name 作 key
+    mesh_paths = []
     for g in groups:
         for member in g.members:
-            unity_xform_by_transform[member] = transform_to_unity(member)
-            debug.log("Cache xform %s -> pos=%s" % (member, unity_xform_by_transform[member][0]))
+            mesh_paths.append(_long_name(member))
     for s in singletons:
-        unity_xform_by_transform[s] = transform_to_unity(s)
-        debug.log("Cache xform %s -> pos=%s" % (s, unity_xform_by_transform[s][0]))
+        mesh_paths.append(_long_name(s))
+
+    # 去重且保序
+    seen = set()
+    ordered_meshes = []
+    for p in mesh_paths:
+        if p not in seen:
+            seen.add(p)
+            ordered_meshes.append(p)
+
+    hierarchy = build_hierarchy(ordered_meshes)
+    debug.log("Hierarchy nodes: %d (groups+meshes)" % len(hierarchy))
+    for hn in hierarchy:
+        debug.log("  [%s] %s parent=%s children=%s" % (
+            hn.kind, hn.name, hn.parent_path, [c.split('|')[-1] for c in hn.children]))
 
     # 4. 每个导出项：FBX + meta + prefab + prefab meta
     prefab_guid_by_transform = {}
     generated = []
+
+    # 把 export item 的 transform 确保为 long name（上面已规范）
+    for item in export_items:
+        item["transform"] = _long_name(item["transform"])
 
     for item in export_items:
         t = item["transform"]
@@ -333,31 +358,101 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         _write_text(dst + ".meta", yaml_writer.texture_meta(tex.guid))
         generated.append(dst)
 
-    # 实例组的每个成员都引用 base 的 prefab（否则场景生成时查不到 guid）
+    # 实例组的每个成员都引用 base 的 prefab
     for g in groups:
-        base_guid = prefab_guid_by_transform[g.base]
+        base = _long_name(g.base)
+        base_guid = prefab_guid_by_transform[base]
         for member in g.members:
-            prefab_guid_by_transform[member] = base_guid
+            prefab_guid_by_transform[_long_name(member)] = base_guid
 
-    # 7. 场景：Prefab 实例按 Maya 世界变换摆放
-    blocks = []
+    # 7. 场景：保留组嵌套，本地 TRS 相对父节点
+    # fileID：空组 GO 5000+ / Transform 5000000+；PrefabInstance 1000+ / stripped 1000000+
+    go_id = 5000
+    group_tr_id = 5000000
     instance_id = 1000
-    transform_id = 1000000
+    mesh_tr_id = 1000000
 
-    ordered = []
-    for g in groups:
-        ordered.extend(g.members)
-    ordered.extend(singletons)
+    # path -> {kind, tr_id, go_id/instance_id, root_order}
+    id_map = {}
+    # 先算每个节点在兄弟中的 root_order（场景根从 2 起，避开相机/灯）
+    root_order_of = {}
+    roots = [x.path for x in hierarchy if x.parent_path is None]
+    by_path = dict((x.path, x) for x in hierarchy)
+    for hn in hierarchy:
+        if hn.parent_path and hn.parent_path in by_path:
+            siblings = by_path[hn.parent_path].children
+            root_order_of[hn.path] = siblings.index(hn.path) if hn.path in siblings else 0
+        else:
+            root_order_of[hn.path] = 2 + roots.index(hn.path) if hn.path in roots else 2
 
-    for t in ordered:
-        pos, rot, scale = unity_xform_by_transform[t]
+    for hn in hierarchy:
+        if hn.kind == 'group':
+            id_map[hn.path] = {
+                'kind': 'group',
+                'go_id': go_id,
+                'tr_id': group_tr_id,
+                'root_order': root_order_of.get(hn.path, 0),
+            }
+            go_id += 1
+            group_tr_id += 1
+        else:
+            id_map[hn.path] = {
+                'kind': 'mesh',
+                'instance_id': instance_id,
+                'tr_id': mesh_tr_id,
+                'root_order': root_order_of.get(hn.path, 0),
+            }
+            instance_id += 1
+            mesh_tr_id += 1
+
+    blocks = []
+    # 先写空组（父先于子已由 hierarchy 排序保证）
+    for hn in hierarchy:
+        if hn.kind != 'group':
+            continue
+        info = id_map[hn.path]
+        parent_tr = 0
+        if hn.parent_path and hn.parent_path in id_map:
+            parent_tr = id_map[hn.parent_path]['tr_id']
+        pos, rot, scale = transform_to_unity_local(hn.path, hn.parent_path)
+        child_trs = []
+        for cp in hn.children:
+            if cp in id_map:
+                child_trs.append(id_map[cp]['tr_id'])
+        debug.log("Group %s local pos=%s parent_tr=%s" % (hn.name, pos, parent_tr))
+        blocks.append(yaml_writer.empty_gameobject_block(
+            info['go_id'], info['tr_id'], hn.name, parent_tr,
+            pos, rot, scale, child_trs, info['root_order'],
+        ))
+
+    # 再写 PrefabInstance
+    for hn in hierarchy:
+        if hn.kind != 'mesh':
+            continue
+        info = id_map[hn.path]
+        parent_tr = 0
+        if hn.parent_path and hn.parent_path in id_map:
+            parent_tr = id_map[hn.parent_path]['tr_id']
+        guid = prefab_guid_by_transform.get(hn.path)
+        if guid is None:
+            # 短名回退
+            for k, v in prefab_guid_by_transform.items():
+                if k.split('|')[-1] == hn.name or _long_name(k) == hn.path:
+                    guid = v
+                    break
+        if guid is None:
+            cmds.warning("Unity_MayaToUnity: no prefab guid for %s, skip." % hn.path)
+            continue
+        pos, rot, scale = transform_to_unity_local(hn.path, hn.parent_path)
+        debug.log("Mesh %s local pos=%s parent_tr=%s" % (hn.name, pos, parent_tr))
         blocks.append(yaml_writer.prefab_instance_block(
-            instance_id, transform_id, prefab_guid_by_transform[t],
-            t.split('|')[-1], pos, rot, scale))
-        instance_id += 1
-        transform_id += 1
+            info['instance_id'], info['tr_id'], guid, hn.name,
+            pos, rot, scale,
+            parent_transform_id=parent_tr,
+            root_order=info['root_order'],
+        ))
 
-    debug.log("Scene instances: %d" % len(ordered))
+    debug.log("Scene hierarchy nodes written: %d" % len(hierarchy))
 
     scene_path = os.path.join(output_dir, scene_name + ".unity")
     _write_text(scene_path, yaml_writer.scene_file("".join(blocks)))

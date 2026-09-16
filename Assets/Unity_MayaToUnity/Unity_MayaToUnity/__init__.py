@@ -100,7 +100,7 @@ def reload_modules():
             continue
         if k in (
             "exporter", "coords", "constants", "debug",
-            "instance_detector", "material_mapper", "yaml_writer",
+            "instance_detector", "material_mapper", "yaml_writer", "hierarchy",
         ):
             path = getattr(mod, "__file__", "") or ""
             if "Unity_MayaToUnity" in path.replace("\\", "/"):
