@@ -129,8 +129,17 @@ def fbx_meta(guid, mesh_name):
     ) % (guid, mesh_name, mesh_name)
 
 
-def texture_meta(guid):
-    """贴图的 .meta（TextureImporter）。"""
+def texture_meta(guid, srgb=True, normal=False):
+    """贴图的 .meta（TextureImporter）。
+
+    srgb=False 用于金属/粗糙度等线性数据贴图。
+    normal=True 时标记为 Normal map（textureType: 1）。
+    """
+    if normal:
+        srgb = False
+    srgb_flag = 1 if srgb else 0
+    linear_flag = 0 if srgb else 1
+    texture_type = 1 if normal else 0
     return (
         "fileFormatVersion: 2\n"
         "guid: %s\n"
@@ -140,8 +149,8 @@ def texture_meta(guid):
         "  mipmaps:\n"
         "    mipMapMode: 0\n"
         "    enableMipMap: 1\n"
-        "    sRGBTexture: 1\n"
-        "    linearTexture: 0\n"
+        "    sRGBTexture: %d\n"
+        "    linearTexture: %d\n"
         "    fadeOut: 0\n"
         "    borderMipMap: 0\n"
         "    mipMapsPreserveCoverage: 0\n"
@@ -181,7 +190,7 @@ def texture_meta(guid):
         "  alphaUsage: 1\n"
         "  alphaIsTransparency: 0\n"
         "  spriteTessellationDetail: -1\n"
-        "  textureType: 0\n"
+        "  textureType: %d\n"
         "  textureShape: 1\n"
         "  singleChannelComponent: 0\n"
         "  flipbookRows: 1\n"
@@ -207,7 +216,7 @@ def texture_meta(guid):
         "  userData: \n"
         "  assetBundleName: \n"
         "  assetBundleVariant: \n"
-    ) % guid
+    ) % (guid, srgb_flag, linear_flag, texture_type)
 
 
 def material_meta(guid):
@@ -242,11 +251,26 @@ def prefab_meta(guid):
 
 def material_file(material):
     """生成 Unity 材质 .mat 内容（!u!21 Material）。"""
-    tex_guid = material.albedo_texture.guid if material.albedo_texture else None
-    if tex_guid:
-        main_tex = "        m_Texture: {fileID: %d, guid: %s, type: 3}\n" % (FILEID_TEXTURE, tex_guid)
+    def _tex_ref(tex):
+        if tex:
+            return "        m_Texture: {fileID: %d, guid: %s, type: 3}\n" % (
+                FILEID_TEXTURE, tex.guid
+            )
+        return "        m_Texture: {fileID: 0}\n"
+
+    main_tex = _tex_ref(material.albedo_texture)
+    bump_tex = _tex_ref(getattr(material, "normal_texture", None))
+    metal_tex = _tex_ref(getattr(material, "metallic_texture", None))
+
+    keywords = []
+    if getattr(material, "normal_texture", None):
+        keywords.append("_NORMALMAP")
+    if getattr(material, "metallic_texture", None):
+        keywords.append("_METALLICGLOSSMAP")
+    if keywords:
+        kw_block = "  m_ValidKeywords:\n" + "".join("  - %s\n" % k for k in keywords)
     else:
-        main_tex = "        m_Texture: {fileID: 0}\n"
+        kw_block = "  m_ValidKeywords: []\n"
 
     r, g, b, a = material.color
     if material.albedo_texture:
@@ -264,7 +288,7 @@ def material_file(material):
         "  m_PrefabAsset: {fileID: 0}\n"
         "  m_Name: %s\n"
         "  m_Shader: {fileID: 46, guid: %s, type: 0}\n"
-        "  m_ValidKeywords: []\n"
+        "%s"
         "  m_InvalidKeywords: []\n"
         "  m_LightmapFlags: 4\n"
         "  m_EnableInstancingVariants: 0\n"
@@ -280,7 +304,11 @@ def material_file(material):
         "        m_Scale: {x: 1, y: 1}\n"
         "        m_Offset: {x: 0, y: 0}\n"
         "    - _BumpMap:\n"
-        "        m_Texture: {fileID: 0}\n"
+        "%s"
+        "        m_Scale: {x: 1, y: 1}\n"
+        "        m_Offset: {x: 0, y: 0}\n"
+        "    - _MetallicGlossMap:\n"
+        "%s"
         "        m_Scale: {x: 1, y: 1}\n"
         "        m_Offset: {x: 0, y: 0}\n"
         "    m_Ints: []\n"
@@ -301,7 +329,8 @@ def material_file(material):
         "    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}\n"
         "  m_BuildTextureStacks: []\n"
     ) % (
-        FILEID_MATERIAL, material.name, STANDARD_SHADER_GUID, main_tex,
+        FILEID_MATERIAL, material.name, STANDARD_SHADER_GUID, kw_block,
+        main_tex, bump_tex, metal_tex,
         _f(material.smoothness), _f(material.metallic),
         _f(r), _f(g), _f(b), _f(a),
     )

@@ -8,6 +8,7 @@
 - **实例 → Prefab**：每组只导出一个网格（FBX），生成一个 Prefab，其余实例在场景里以该 Prefab 的实例形式、按各自世界变换摆放。
 - **唯一网格**：不参与实例化的唯一网格也各导出为一个 Prefab。
 - **材质 / 贴图**：读取 Maya 主颜色（baseColor / color）、主贴图（file 节点）、Arnold metalness / specularRoughness，生成 Built-in Standard 材质的 `.mat` 与贴图副本。
+- **材质转 PBR**：菜单可将非 `standardSurface` / Arnold 材质一键换成 PBR（保留原名，源材质备份为 `*_mtu_src`），并可一键还原。
 - **导出范围可选**：选中对象时只导出选中；不选时导出整个场景。
 
 ## 环境

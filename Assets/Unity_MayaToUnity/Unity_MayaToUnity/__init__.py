@@ -34,6 +34,7 @@ import maya.cmds as cmds
 
 from exporter import export
 import debug
+import material_convert
 
 
 MENU_NAME = "unity_maya_to_unity_menu"
@@ -63,6 +64,35 @@ def _export_with_dialog():
         )
 
 
+def _confirm_report(title, result):
+    text = material_convert._format_report(title, result)
+    print(text)
+    cmds.confirmDialog(
+        title=title,
+        message=text[:900],
+        button=["OK"],
+        defaultButton="OK",
+        cancelButton="OK",
+        dismissString="OK",
+    )
+
+
+def convert_materials_to_pbr():
+    """检测并转换材质到 standardSurface / Arnold；选中物体优先，否则全场景。"""
+    selection = cmds.ls(selection=True) or None
+    result = material_convert.convert_materials_to_pbr(selection)
+    _confirm_report("Convert Materials to PBR", result)
+    return result
+
+
+def restore_original_materials():
+    """还原到转换前的源材质。"""
+    selection = cmds.ls(selection=True) or None
+    result = material_convert.restore_original_materials(selection)
+    _confirm_report("Restore Original Materials", result)
+    return result
+
+
 def install_menu():
     """在主菜单栏安装「Unity MayaToUnity」菜单。"""
     main = 'MayaWindow'
@@ -74,6 +104,15 @@ def install_menu():
     cmds.menu(MENU_NAME, label=MENU_LABEL, parent=main, tearOff=True)
     cmds.menuItem(label="Export to Unity Project...", command=lambda *_: _export_with_dialog())
     cmds.menuItem(label="Diagnose Scene...", command=lambda *_: diagnose())
+    cmds.menuItem(divider=True)
+    cmds.menuItem(
+        label="Convert Materials to PBR...",
+        command=lambda *_: convert_materials_to_pbr(),
+    )
+    cmds.menuItem(
+        label="Restore Original Materials...",
+        command=lambda *_: restore_original_materials(),
+    )
     cmds.menuItem(divider=True)
     cmds.menuItem(label="Reload Plugin Modules", command=lambda *_: reload_modules())
     cmds.menuItem(label="Enable Debug Log", checkBox=False, command=_toggle_debug)
@@ -101,6 +140,7 @@ def reload_modules():
         if k in (
             "exporter", "coords", "constants", "debug",
             "instance_detector", "material_mapper", "yaml_writer", "hierarchy",
+            "material_convert",
         ):
             path = getattr(mod, "__file__", "") or ""
             if "Unity_MayaToUnity" in path.replace("\\", "/"):
@@ -111,7 +151,7 @@ def reload_modules():
     import Unity_MayaToUnity as pkg
     reload(pkg)
     pkg.install_menu()
-    cmds.warning("Unity_MayaToUnity: modules reloaded.")
+    print("Unity_MayaToUnity: modules reloaded.")
     return True
 
 

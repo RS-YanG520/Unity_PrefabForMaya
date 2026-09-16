@@ -91,8 +91,12 @@ def diagnose_scene(selection=None):
     lines.append("Materials: %d" % len(materials))
     for m in materials:
         tex = m.albedo_texture.name if m.albedo_texture else "(none)"
-        lines.append("  - %s  color=%s  metallic=%s  smoothness=%s  tex=%s" % (
-            m.name, _fmt_color(m.color), m.metallic, m.smoothness, tex))
+        metal_tex = m.metallic_texture.name if getattr(m, "metallic_texture", None) else "(none)"
+        normal_tex = m.normal_texture.name if getattr(m, "normal_texture", None) else "(none)"
+        lines.append(
+            "  - %s  color=%s  metallic=%s  smoothness=%s  albedo=%s  metallicMap=%s  normal=%s"
+            % (m.name, _fmt_color(m.color), m.metallic, m.smoothness, tex, metal_tex, normal_tex)
+        )
 
     lines.append("Textures: %d" % len(textures))
     for t in textures:

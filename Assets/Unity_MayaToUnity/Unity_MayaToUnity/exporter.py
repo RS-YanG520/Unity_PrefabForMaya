@@ -355,7 +355,14 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
                 shutil.copyfile(tex.src_path, dst)
             except Exception as e:
                 cmds.warning("Unity_MayaToUnity: failed to copy texture %s: %s" % (tex.src_path, e))
-        _write_text(dst + ".meta", yaml_writer.texture_meta(tex.guid))
+        _write_text(
+            dst + ".meta",
+            yaml_writer.texture_meta(
+                tex.guid,
+                srgb=getattr(tex, "srgb", True),
+                normal=getattr(tex, "is_normal", False),
+            ),
+        )
         generated.append(dst)
 
     # 实例组的每个成员都引用 base 的 prefab
