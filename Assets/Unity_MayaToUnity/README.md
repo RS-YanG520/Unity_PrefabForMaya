@@ -7,7 +7,7 @@
 - **识别 Maya 实例**：Maya 里用 Duplicate Special（instance）创建的实例会共享同一个 mesh shape。插件把「共享同一 shape 的多个 transform」识别为一个实例组。
 - **实例 → Prefab**：每组只导出一个网格（FBX），生成一个 Prefab，其余实例在场景里以该 Prefab 的实例形式、按各自世界变换摆放。
 - **唯一网格**：不参与实例化的唯一网格也各导出为一个 Prefab。
-- **材质 / 贴图**：读取 Maya 主颜色（baseColor / color）、主贴图（file 节点）、Arnold metalness / specularRoughness，生成 Built-in Standard 材质的 `.mat` 与贴图副本。
+- **材质 / 贴图**：读取 Maya 主颜色（baseColor / color）、主贴图、metalness 贴图、法线贴图；**同一 mesh 多材质按面集导出为多个 Materials 槽**。
 - **材质转 PBR**：菜单可将非 `standardSurface` / Arnold 材质一键换成 PBR（保留原名，源材质备份为 `*_mtu_src`），并可一键还原。
 - **导出范围可选**：选中对象时只导出选中；不选时导出整个场景。
 
@@ -101,11 +101,11 @@ Unity_MayaToUnity.export(
 ## 当前限制（第一版）
 
 - 只处理静态 mesh，不含骨骼 / 蒙皮 / 动画。
-- 材质只映射主颜色 + 主贴图 + metallic / roughness；复杂 shading network（程序纹理、混合节点）需要先烘焙。
+- 材质只映射主颜色 + 主贴图 + metallic / 法线；复杂 shading network（程序纹理、混合节点）需要先烘焙。
 - 贴图按引用复制，不处理 UV 平铺/偏移与颜色校正节点。
 - 场景生成的是基础摄像机 + 平行光 + Prefab 实例；Maya 里的灯光 / 相机不导出。
 - 场景保留组嵌套（空组→空 GameObject）；Prefab 资产本身仍是单网格，不含内部层级。
 
 ## 阶段进度（摘要）
 
-第一版主路径已打通：实例识别 → 对象空间 FBX → Prefab / 材质 / 带层级的场景 YAML，坐标已对齐。后续重点为材质增强，见 `可行性分析.md` §6。
+第一版主路径已打通：实例识别 → 对象空间 FBX → Prefab / 多材质槽 / 带层级的场景 YAML，坐标已对齐。后续重点为复杂材质与 UV，见 `可行性分析.md` §6。

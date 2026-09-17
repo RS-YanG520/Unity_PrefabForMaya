@@ -101,7 +101,7 @@ def fbx_meta(guid, mesh_name):
         "  tangentSpace:\n"
         "    normalSmoothAngle: 60\n"
         "    normalImportMode: 0\n"
-        "    tangentImportMode: 0\n"
+        "    tangentImportMode: 3\n"
         "  importAnimation: 1\n"
         "  copyAvatar: 0\n"
         "  humanDescription:\n"
@@ -340,18 +340,31 @@ def material_file(material):
 # Prefab .prefab
 # =====================================================================
 
-def prefab_file(prefab_name, fbx_guid, material_guid):
+def prefab_file(prefab_name, fbx_guid, material_guids):
     """生成 Prefab .prefab 内容（GameObject + Transform + MeshFilter + MeshRenderer）。
 
     mesh 引用 FBX 内固定 fileID 4300000；材质引用独立 .mat（type: 2）。
+    material_guids：单个 guid 字符串、guid 列表，或 None。
+    多材质时按列表顺序写入 m_Materials，与 Maya 面集 / FBX submesh 槽序对应。
     """
     go = FILEID_ROOT_GAMEOBJECT
     tr = FILEID_ROOT_TRANSFORM
     mf = FILEID_MESH_FILTER
     mr = FILEID_MESH_RENDERER
 
-    if material_guid:
-        material_ref = "  - {fileID: %d, guid: %s, type: 2}\n" % (FILEID_MATERIAL, material_guid)
+    # 兼容旧调用：单个 guid
+    if material_guids is None:
+        guid_list = []
+    elif isinstance(material_guids, (list, tuple)):
+        guid_list = [g for g in material_guids if g]
+    else:
+        guid_list = [material_guids]
+
+    if guid_list:
+        material_ref = "".join(
+            "  - {fileID: %d, guid: %s, type: 2}\n" % (FILEID_MATERIAL, g)
+            for g in guid_list
+        )
     else:
         # 无材质时引用内置默认材质
         material_ref = "  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}\n"

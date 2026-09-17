@@ -58,6 +58,8 @@ def _configure_fbx_export():
         'FBXExportScaleFactor 1.0',
         'FBXExportConvertUnitString "cm"',
         'FBXExportBakeComplexAnimation -v false',
+        # 不导出上游连接，避免把整棵 shading network 打进 FBX；
+        # 多材质槽依赖 mesh 上的 shadingEngine 面分配（LayerElementMaterial）。
         'FBXExportInputConnections -v false',
         'FBXExportInstances -v false',
         'FBXExportUseSceneName -v false',
@@ -165,11 +167,26 @@ def _read_fbx_mesh_name(fbx_path):
     return names[0]
 
 
-def _shape_to_material(materials):
-    """建立 shape 短名 -> Material 的映射（通过 shadingEngine 成员反查）。"""
-    result = {}
+def _member_min_face(member):
+    """从 sets 成员名解析最小面号；整物体赋值（无 .f[]）返回 -1。"""
+    m = re.search(r'\.f\[(\d+)(?::(\d+))?\]', member)
+    if not m:
+        return -1
+    return int(m.group(1))
+
+
+def _shape_to_materials(materials):
+    """建立 shape 短名 -> [Material, ...]（按最小面号排序，对应 Unity submesh 槽序）。
+
+    同一 mesh 上多个 shadingEngine / 按面赋材质时，返回多个材质；单材质仍为长度 1。
+    """
     mat_by_name = {m.name: m for m in materials}
+    # shape -> [(sort_key, mat_name, Material)]
+    buckets = {}
+
     for se in cmds.ls(type='shadingEngine'):
+        if se == 'initialShadingGroup':
+            continue
         mats = cmds.listConnections(se + '.surfaceShader') or []
         if not mats:
             continue
@@ -178,23 +195,55 @@ def _shape_to_material(materials):
         members = cmds.sets(se, q=True) or []
         debug.log("SG %s -> material=%s, members=%s" % (se, leaf, members))
         if mat is None:
-            debug.log("  material %s not in collected list %s" % (leaf, sorted(mat_by_name.keys())))
+            debug.log("  material %s not in collected list %s" % (
+                leaf, sorted(mat_by_name.keys())))
             continue
+
+        # 本 SG 影响到的 shape -> 最小面号
+        shape_faces = {}
         for member in members:
-            # member 可能是 "transform.f[0:N]"（Maya 省略 shape 名，前缀是 transform），
-            # 也可能是 "shape.f[0:N]" 或纯 "shape"；统一解析出 shape 短名
             node = member.split('.')[0].split('|')[-1]
+            if not cmds.objExists(node):
+                continue
             node_type = cmds.nodeType(node)
             if node_type == 'mesh':
                 shape_names = [node]
             elif node_type == 'transform':
-                shape_names = [s.split('|')[-1] for s in (
-                    cmds.listRelatives(node, shapes=True, noIntermediate=True) or [])]
+                shape_names = [
+                    s.split('|')[-1]
+                    for s in (cmds.listRelatives(node, shapes=True, noIntermediate=True) or [])
+                ]
             else:
                 continue
+            fmin = _member_min_face(member)
             for shape_name in shape_names:
-                result[shape_name] = mat
-                debug.log("  mapped %s -> %s" % (shape_name, leaf))
+                if shape_name not in shape_faces:
+                    shape_faces[shape_name] = fmin
+                else:
+                    prev = shape_faces[shape_name]
+                    # -1 表示整物体，保持优先；否则取更小面号
+                    if prev == -1 or fmin == -1:
+                        shape_faces[shape_name] = -1
+                    else:
+                        shape_faces[shape_name] = min(prev, fmin)
+
+        for shape_name, fmin in shape_faces.items():
+            buckets.setdefault(shape_name, []).append((fmin, leaf, mat))
+            debug.log("  mapped %s faceMin=%s -> %s" % (shape_name, fmin, leaf))
+
+    result = {}
+    for shape_name, items in buckets.items():
+        items.sort(key=lambda x: (x[0], x[1]))
+        ordered = []
+        seen = set()
+        for _fmin, leaf, mat in items:
+            if leaf in seen:
+                continue
+            seen.add(leaf)
+            ordered.append(mat)
+        result[shape_name] = ordered
+        debug.log("shape %s -> %d material slot(s): %s" % (
+            shape_name, len(ordered), [m.name for m in ordered]))
     return result
 
 
@@ -247,7 +296,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
     debug.log("Materials: %d, Textures: %d" % (len(materials), len(textures)))
 
-    shape_mat = _shape_to_material(materials)
+    shape_mats = _shape_to_materials(materials)
 
     # 2. 实例分析
     groups, singletons = analyze(selection)
@@ -321,27 +370,30 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
 
         shape_key = shape.split('|')[-1] if shape else None
-        material = shape_mat.get(shape_key)
-        material_guid = material.guid if material else None
-        debug.log("  fbx_guid=%s prefab_guid=%s material=%s" % (
-            fbx_guid, prefab_guid, material.name if material else "(none)"))
+        mats_for_shape = shape_mats.get(shape_key) or []
+        material_guids = [m.guid for m in mats_for_shape]
+        debug.log("  fbx_guid=%s prefab_guid=%s materials=%s" % (
+            fbx_guid, prefab_guid,
+            [m.name for m in mats_for_shape] if mats_for_shape else "(none)"))
 
         prefab_path = os.path.join(prefabs_dir, prefab_name + ".prefab")
-        _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guid))
+        _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guids))
         _write_text(prefab_path + ".meta", yaml_writer.prefab_meta(prefab_guid))
 
         prefab_guid_by_transform[t] = prefab_guid
         generated.append(prefab_path)
 
-    # 5. 材质文件（去重）
+    # 5. 材质文件（去重；写出本导出用到的全部材质槽）
     written_mats = set()
+    mats_to_write = []
     for item in export_items:
         shape = item["shape"]
         shape_key = shape.split('|')[-1] if shape else None
-        material = shape_mat.get(shape_key)
-        if material is None or material.name in written_mats:
-            continue
-        written_mats.add(material.name)
+        for material in (shape_mats.get(shape_key) or []):
+            if material.name not in written_mats:
+                written_mats.add(material.name)
+                mats_to_write.append(material)
+    for material in mats_to_write:
         mat_path = os.path.join(materials_dir, material.name + ".mat")
         _write_text(mat_path, yaml_writer.material_file(material))
         _write_text(mat_path + ".meta", yaml_writer.material_meta(material.guid))
