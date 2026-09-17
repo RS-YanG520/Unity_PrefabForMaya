@@ -343,6 +343,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     # 4. 每个导出项：FBX + meta + prefab + prefab meta
     prefab_guid_by_transform = {}
     generated = []
+    written_mats = set()
 
     # 把 export item 的 transform 确保为 long name（上面已规范）
     for item in export_items:
@@ -367,7 +368,6 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             debug.log("FBX is binary; use export name as mesh name: %s" % exported_name)
         mesh_name = parsed_mesh or exported_name or _TEMP_EXPORT_NAME
         debug.log("  FBX mesh name: %s" % mesh_name)
-        _write_text(fbx_path + ".meta", yaml_writer.fbx_meta(fbx_guid, mesh_name))
 
         shape_key = shape.split('|')[-1] if shape else None
         mats_for_shape = shape_mats.get(shape_key) or []
@@ -376,6 +376,21 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             fbx_guid, prefab_guid,
             [m.name for m in mats_for_shape] if mats_for_shape else "(none)"))
 
+        # 先写 .mat，再写 FBX .meta（含 Remapped Materials 引用）
+        for material in mats_for_shape:
+            if material.name in written_mats:
+                continue
+            written_mats.add(material.name)
+            mat_path = os.path.join(materials_dir, material.name + ".mat")
+            _write_text(mat_path, yaml_writer.material_file(material))
+            _write_text(mat_path + ".meta", yaml_writer.material_meta(material.guid))
+            generated.append(mat_path)
+
+        _write_text(
+            fbx_path + ".meta",
+            yaml_writer.fbx_meta(fbx_guid, mesh_name, mats_for_shape),
+        )
+
         prefab_path = os.path.join(prefabs_dir, prefab_name + ".prefab")
         _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guids))
         _write_text(prefab_path + ".meta", yaml_writer.prefab_meta(prefab_guid))
@@ -383,21 +398,18 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         prefab_guid_by_transform[t] = prefab_guid
         generated.append(prefab_path)
 
-    # 5. 材质文件（去重；写出本导出用到的全部材质槽）
-    written_mats = set()
-    mats_to_write = []
+    # 5. 补写尚未写出的材质（理论上上面循环已覆盖）
     for item in export_items:
         shape = item["shape"]
         shape_key = shape.split('|')[-1] if shape else None
         for material in (shape_mats.get(shape_key) or []):
-            if material.name not in written_mats:
-                written_mats.add(material.name)
-                mats_to_write.append(material)
-    for material in mats_to_write:
-        mat_path = os.path.join(materials_dir, material.name + ".mat")
-        _write_text(mat_path, yaml_writer.material_file(material))
-        _write_text(mat_path + ".meta", yaml_writer.material_meta(material.guid))
-        generated.append(mat_path)
+            if material.name in written_mats:
+                continue
+            written_mats.add(material.name)
+            mat_path = os.path.join(materials_dir, material.name + ".mat")
+            _write_text(mat_path, yaml_writer.material_file(material))
+            _write_text(mat_path + ".meta", yaml_writer.material_meta(material.guid))
+            generated.append(mat_path)
 
     # 6. 贴图文件（复制 + meta）
     for tex in textures:

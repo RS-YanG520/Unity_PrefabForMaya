@@ -39,8 +39,30 @@ def _vec3(x, y, z):
 # .meta 文件
 # =====================================================================
 
-def fbx_meta(guid, mesh_name):
-    """FBX 的 .meta（ModelImporter）。fileIDToRecycleName 固定内部 fileID。"""
+def fbx_meta(guid, mesh_name, materials=None):
+    """FBX 的 .meta（ModelImporter）。fileIDToRecycleName 固定内部 fileID。
+
+    materials：Material 列表，写入 externalObjects 作为 Remapped Materials
+    （Material Creation Mode = Import via MaterialDescription）。
+    """
+    if materials is None:
+        materials = []
+
+    if materials:
+        ext_lines = ["  externalObjects:\n"]
+        for mat in materials:
+            ext_lines.append(
+                "  - first:\n"
+                "      type: UnityEngine:Material\n"
+                "      assembly: UnityEngine.CoreModule\n"
+                "      name: %s\n"
+                "    second: {fileID: %d, guid: %s, type: 2}\n"
+                % (mat.name, FILEID_MATERIAL, mat.guid)
+            )
+        external_block = "".join(ext_lines)
+    else:
+        external_block = "  externalObjects: {}\n"
+
     return (
         "fileFormatVersion: 2\n"
         "guid: %s\n"
@@ -53,9 +75,9 @@ def fbx_meta(guid, mesh_name):
         "    3300000: //RootNode\n"
         "    4300000: %s\n"
         "    4300002: %s\n"
-        "  externalObjects: {}\n"
+        "%s"
         "  materials:\n"
-        "    importMaterials: 0\n"
+        "    materialImportMode: 2\n"
         "    materialName: 0\n"
         "    materialSearch: 1\n"
         "    materialLocation: 1\n"
@@ -78,7 +100,7 @@ def fbx_meta(guid, mesh_name):
         "    animationWrapMode: 0\n"
         "    extraExposedTransformPaths: []\n"
         "    clipAnimations: []\n"
-        "    isReadable: 1\n"
+        "    isReadable: 0\n"
         "  meshes:\n"
         "    lODScreenPercentages: []\n"
         "    globalScale: 1\n"
@@ -88,10 +110,10 @@ def fbx_meta(guid, mesh_name):
         "    swapUVChannels: 0\n"
         "    generateSecondaryUV: 0\n"
         "    useFileUnits: 1\n"
-        "    optimizeMeshForGPU: 0\n"
         "    keepQuads: 0\n"
-        "    weldVertices: 0\n"
+        "    weldVertices: 1\n"
         "    preserveHierarchy: 0\n"
+        "    meshOptimizationFlags: -1\n"
         "    indexFormat: 0\n"
         "    secondaryUVAngleDistortion: 8\n"
         "    secondaryUVAreaDistortion: 15.000001\n"
@@ -126,7 +148,7 @@ def fbx_meta(guid, mesh_name):
         "  userData: \n"
         "  assetBundleName: \n"
         "  assetBundleVariant: \n"
-    ) % (guid, mesh_name, mesh_name)
+    ) % (guid, mesh_name, mesh_name, external_block)
 
 
 def texture_meta(guid, srgb=True, normal=False):
