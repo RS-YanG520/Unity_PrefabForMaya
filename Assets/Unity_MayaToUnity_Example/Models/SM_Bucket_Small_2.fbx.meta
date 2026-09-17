@@ -7,14 +7,9 @@ ModelImporter:
     400000: //RootNode
     2300000: //RootNode
     3300000: //RootNode
-    4300000: __MTU_Mesh__
-    4300002: __MTU_Mesh__
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: MI_Barn_SmallProps_1
-    second: {fileID: 2100000, guid: 0fe53833f7fa5fbe6a22aa55e4456c8b, type: 2}
+    4300000: SM_Bucket_Small
+    4300002: SM_Bucket_Small
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0

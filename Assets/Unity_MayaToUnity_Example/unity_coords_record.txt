@@ -1,4 +1,0 @@
-# 第四轮 — SM_Bucket_Small_4 非均匀缩放
-Maya local scale: (1.746, 0.714, 1.746)  rotateX=-35.575
-Unity 错误 scale: (1.746, 1.170, 1.480)  ← 误用矩阵「列」长
-正确:  Maya 为 p*S*R*T，缩放在「行」长 → sy 应为 0.714

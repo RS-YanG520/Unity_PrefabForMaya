@@ -37,6 +37,10 @@ FILEID_TEXTURE = 2800000             # 贴图 mainObject 的 fileID
 FILEID_PREFAB_SOURCE = 100100000     # PrefabInstance 的 m_SourcePrefab 固定值
 FILEID_SHADER_STANDARD = 46          # 内置 Standard shader 的 fileID
 
+# 实例组「基础模型」导出文件名后缀，便于和独立网格区分
+# 例：SM_Bucket_Small → SM_Bucket_Small_Inst.fbx / .prefab
+INSTANCE_BASE_SUFFIX = "_Inst"
+
 
 def _to_bytes(value):
     """把 str / unicode 统一成 bytes（Python 2 下 hashlib 需要 str）。"""

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """Maya 实例识别。
 
-Maya 里用 Duplicate Special（instance）创建的实例会共享同一个 mesh shape，
-因此「多个 transform 的 shape 相同」即是一个实例组。导出时每组生成一个 Prefab，
-组内每个 transform 作为该 Prefab 的一个实例，按各自世界变换摆回场景。
+仅识别真正的 Maya Instance（多个 transform 共享同一 mesh shape）。
+普通 Duplicate 出的独立网格各自导出，不做几何指纹合并（避免误合并）。
+
+导出时每个实例组只生成一个 Prefab/FBX（base），组内其它 transform
+在场景里作为该 Prefab 的实例摆放。
 """
 from __future__ import print_function
 
@@ -11,23 +13,38 @@ import re
 
 import maya.cmds as cmds
 
+from constants import INSTANCE_BASE_SUFFIX
+
 
 class InstanceGroup(object):
     """一个实例组：共享同一 shape 的一组 transform。"""
 
-    def __init__(self, shape, base, members, prefab_name):
-        self.shape = shape              # 共享的 mesh shape 名
-        self.base = base                # 导出 FBX 所用的 transform（组内第一个）
-        self.members = members          # 组内所有 transform（实例）
-        self.prefab_name = prefab_name  # Prefab 名（base 名去掉末尾数字）
+    def __init__(self, shape, base, members, prefab_name, kind="instance"):
+        self.shape = shape
+        self.base = base
+        self.members = members
+        self.prefab_name = prefab_name
+        self.kind = kind  # 仅 "instance"
 
 
 def strip_trailing_digits(name):
-    """去掉名字末尾数字：pCube2 -> pCube，pCube -> pCube。"""
+    """去掉名字末尾数字：SM_Bucket_Small_2 -> SM_Bucket_Small。"""
     m = re.match(r'^(.*?)\d+$', name)
     if m and m.group(1):
         return m.group(1).rstrip('_ .-')
     return name
+
+
+def _short(node):
+    name = (node or "").split("|")[-1]
+    if ":" in name:
+        name = name.split(":")[-1]
+    return name
+
+
+def _long(node):
+    longs = cmds.ls(node, long=True) or []
+    return longs[0] if longs else node
 
 
 def _is_mesh_transform(node):
@@ -38,11 +55,7 @@ def _is_mesh_transform(node):
 
 
 def collect_mesh_transforms(selection=None):
-    """收集要导出的 mesh transform。
-
-    selection 为 None 时收集整个场景；否则从选中对象展开（支持选中 mesh /
-    transform / group）。
-    """
+    """收集要导出的 mesh transform。"""
     if not selection:
         return [t for t in cmds.ls(type='transform') if _is_mesh_transform(t)]
 
@@ -58,42 +71,72 @@ def collect_mesh_transforms(selection=None):
                 if obj not in result:
                     result.append(obj)
             else:
-                for child in cmds.listRelatives(obj, ad=True, type='transform', fullPath=True) or []:
+                for child in cmds.listRelatives(
+                        obj, ad=True, type='transform', fullPath=True) or []:
                     if _is_mesh_transform(child) and child not in result:
                         result.append(child)
     return result
 
 
+def _shape_identity(transform):
+    """同一 Maya Instance 共享同一 shape 节点身份（用 UUID，不用 DAG 路径）。"""
+    shapes = cmds.listRelatives(
+        transform, shapes=True, noIntermediate=True) or []
+    mesh_shapes = [s for s in shapes if cmds.nodeType(s) == 'mesh']
+    if not mesh_shapes:
+        return None
+    sh = mesh_shapes[0]
+    try:
+        uuids = cmds.ls(sh, uuid=True) or []
+        if uuids:
+            return "uuid:" + uuids[0]
+    except Exception:
+        pass
+    return "node:" + _short(sh)
+
+
+def _pick_base(members):
+    """选导出 base：优先根名（无尾缀数字）、更短的名字。"""
+    def score(t):
+        leaf = _short(t)
+        root = strip_trailing_digits(leaf)
+        is_root = 0 if leaf == root else 1
+        return (is_root, len(leaf), leaf.lower())
+
+    return sorted(members, key=score)[0]
+
+
 def analyze(selection=None):
     """分析场景，返回 (groups, singletons)。
 
-    groups：InstanceGroup 列表（成员 >= 2 的实例组）。
-    singletons：唯一 mesh 的 transform 名列表（成员 = 1，不参与 Prefab 实例化）。
+    groups：真·Maya Instance 组（共享 shape，成员 >= 2），每组只导一份 FBX。
+    singletons：独立网格（含普通 Duplicate 的副本），各自导出。
     """
-    transforms = collect_mesh_transforms(selection)
+    transforms = [_long(t) for t in collect_mesh_transforms(selection)]
 
-    # 按共享 shape 分组（实例化会让多个 transform 指向同一 shape）
     shape_map = {}
-    order = []
+    shape_order = []
     for t in transforms:
-        shapes = cmds.listRelatives(t, shapes=True, noIntermediate=True) or []
-        if not shapes:
+        key = _shape_identity(t)
+        if not key:
             continue
-        shape = shapes[0]
-        if shape not in shape_map:
-            shape_map[shape] = []
-            order.append(shape)
-        if t not in shape_map[shape]:
-            shape_map[shape].append(t)
+        if key not in shape_map:
+            shape_map[key] = []
+            shape_order.append(key)
+        if t not in shape_map[key]:
+            shape_map[key].append(t)
 
     groups = []
     singletons = []
-    for shape in order:
-        members = shape_map[shape]
+    for key in shape_order:
+        members = shape_map[key]
         if len(members) >= 2:
-            base = members[0]
-            leaf = base.split('|')[-1]
-            groups.append(InstanceGroup(shape, base, members, strip_trailing_digits(leaf)))
+            base = _pick_base(members)
+            leaf = _short(base)
+            prefab = strip_trailing_digits(leaf) + INSTANCE_BASE_SUFFIX
+            groups.append(InstanceGroup(
+                key, base, members, prefab, kind="instance",
+            ))
         else:
             singletons.append(members[0])
 

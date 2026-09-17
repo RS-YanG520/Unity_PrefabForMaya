@@ -87,8 +87,8 @@ _STRINGS = {
         "zh": u"还原原始材质",
     },
     "warn_no_main_window": {
-        "en": u"Unity_MayaToUnity: main window 'MayaWindow' not found, cannot install menu.",
-        "zh": u"Unity_MayaToUnity: 未找到主窗口 MayaWindow，无法安装菜单。",
+        "en": u"Unity_MayaToUnity: main window 'MayaWindow' not found, cannot open toolbox.",
+        "zh": u"Unity_MayaToUnity: 未找到主窗口 MayaWindow，无法打开工具窗口。",
     },
     "msg_reloaded": {
         "en": u"Unity_MayaToUnity: modules reloaded.",
@@ -97,6 +97,122 @@ _STRINGS = {
     "msg_lang_switched": {
         "en": u"Unity_MayaToUnity: language set to English.",
         "zh": u"Unity_MayaToUnity: 界面语言已切换为中文。",
+    },
+    "ui_sec_export": {
+        "en": u"Export",
+        "zh": u"导出",
+    },
+    "ui_sec_materials": {
+        "en": u"Materials",
+        "zh": u"材质",
+    },
+    "ui_sec_options": {
+        "en": u"Options",
+        "zh": u"选项",
+    },
+    "ui_sec_plugin": {
+        "en": u"Plugin",
+        "zh": u"插件",
+    },
+    "ui_status_hint": {
+        "en": u"Tip: check Selection Only, then select meshes before Export.",
+        "zh": u"提示：勾选「仅选中」后先选物体再导出；不勾则导出全场景。",
+    },
+    "ui_diag_title": {
+        "en": u"Diagnosis",
+        "zh": u"诊断信息",
+    },
+    "ui_diag_placeholder": {
+        "en": u"Click Diagnose to refresh summary and mesh list.",
+        "zh": u"点击「诊断」刷新汇总与模型列表。",
+    },
+    "ui_diag_summary": {
+        "en": u"Models: %d  |  Mats: %d  |  Tex: %d  |  Faces: %d  |  Est: %s",
+        "zh": u"模型: %d  |  材质: %d  |  贴图: %d  |  面数: %d  |  预估导出: %s",
+    },
+    "ui_col_name": {
+        "en": u"Name",
+        "zh": u"名称",
+    },
+    "ui_col_faces": {
+        "en": u"Faces",
+        "zh": u"面数",
+    },
+    "ui_col_instance": {
+        "en": u"Instance",
+        "zh": u"实例化",
+    },
+    "ui_col_size": {
+        "en": u"Est. Size",
+        "zh": u"预估大小",
+    },
+    "ui_col_base": {
+        "en": u"Inst Base",
+        "zh": u"基础模型",
+    },
+    "ui_base_none": {
+        "en": u"-",
+        "zh": u"-",
+    },
+    "ui_size_shared": {
+        "en": u"(shared)",
+        "zh": u"(共享)",
+    },
+    "ui_inst_yes": {
+        "en": u"Yes",
+        "zh": u"是",
+    },
+    "ui_inst_no": {
+        "en": u"No",
+        "zh": u"否",
+    },
+    "ui_warn_mesh_missing": {
+        "en": u"Unity_MayaToUnity: mesh no longer exists in the scene.",
+        "zh": u"Unity_MayaToUnity: 场景中已找不到该模型。",
+    },
+    "ui_menu_options": {
+        "en": u"Options",
+        "zh": u"选项",
+    },
+    "ui_menu_help": {
+        "en": u"Help",
+        "zh": u"帮助",
+    },
+    "ui_btn_export": {
+        "en": u"Export",
+        "zh": u"导出",
+    },
+    "ui_btn_diagnose": {
+        "en": u"Diagnose",
+        "zh": u"诊断",
+    },
+    "ui_btn_convert": {
+        "en": u"To PBR",
+        "zh": u"转 PBR",
+    },
+    "ui_btn_restore": {
+        "en": u"Restore",
+        "zh": u"还原材质",
+    },
+    "ui_btn_reload": {
+        "en": u"Reload Modules",
+        "zh": u"重载模块",
+    },
+    "ui_sel_only": {
+        "en": u"Selection Only",
+        "zh": u"仅导出选中",
+    },
+    "ui_warn_no_sel": {
+        "en": u"Unity_MayaToUnity: Selection Only is on, but nothing is selected.",
+        "zh": u"Unity_MayaToUnity: 已勾选仅导出选中，但当前没有选中物体。",
+    },
+    "ui_about": {
+        "en": u"About",
+        "zh": u"关于",
+    },
+    "ui_about_msg": {
+        "en": u"Unity MayaToUnity\nMaya 2018 → Unity Prefab exporter.",
+        "zh": u"Unity MayaToUnity\nMaya 2018 → Unity Prefab 导出工具。",
     },
 }
 
@@ -132,10 +248,9 @@ def get_lang():
 
 
 def set_lang(lang, rebuild_menu=True):
-    """设置语言并可选重建菜单。
+    """设置语言并可选刷新工具窗口文案。
 
-    重建必须延迟到当前菜单事件结束之后（evalDeferred），
-    否则在 Language 菜单项回调里 deleteUI 会触发 Qt ACCESS_VIOLATION 崩溃。
+    rebuild_menu 参数保留兼容；现为刷新 toolbox，不再 deleteUI 主菜单。
     """
     if lang not in ("en", "zh"):
         lang = "en"
@@ -144,17 +259,20 @@ def set_lang(lang, rebuild_menu=True):
     except Exception:
         pass
     if rebuild_menu:
-        # 不能在 menuItem command 里同步 deleteUI/重建同一菜单
-        def _rebuild():
+        def _refresh():
             try:
-                import Unity_MayaToUnity as pkg
-                pkg.install_menu()
+                import ui as toolbox_ui
+                toolbox_ui.refresh_toolbox()
             except Exception:
-                pass
+                try:
+                    import Unity_MayaToUnity as pkg
+                    pkg.show_toolbox()
+                except Exception:
+                    pass
         try:
-            cmds.evalDeferred(_rebuild)
+            cmds.evalDeferred(_refresh)
         except Exception:
-            _rebuild()
+            _refresh()
     print(to_maya_ui(_STRINGS["msg_lang_switched"][lang]))
     return lang
 

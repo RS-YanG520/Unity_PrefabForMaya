@@ -20,7 +20,7 @@ import maya.mel as mel
 
 from constants import guid_from_string, to_maya_ui
 from coords import transform_to_unity_local
-from instance_detector import analyze, strip_trailing_digits
+from instance_detector import analyze
 from hierarchy import build_hierarchy
 from material_mapper import collect_materials
 import yaml_writer
@@ -28,8 +28,8 @@ import debug
 
 # 世界单位矩阵：导出前把临时物体摆到原点，让 FBX 只存对象空间顶点
 _IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
-# 固定临时导出名，避免与场景里已有 SM_Bucket_Small_2 等重名被 Maya 改成 _6
-_TEMP_EXPORT_NAME = "__MTU_Mesh__"
+# 导出副本临时名前缀（不改动场景中的源物体）
+_TEMP_EXPORT_PREFIX = "__MTU_Exp_"
 
 
 def _write_text(path, text):
@@ -63,8 +63,21 @@ def _configure_fbx_export():
         'FBXExportInputConnections -v false',
         'FBXExportInstances -v false',
         'FBXExportUseSceneName -v false',
+        # Binary：体积约为 ASCII 的 1/5；mesh 名靠导出前节点名 + .meta fileIDToRecycleName
+        'FBXExportInAscii -v false',
+        'FBXExportEmbeddedTextures -v false',
     ):
         _mel_quiet(cmd)
+
+
+def _shape_is_shared(transform):
+    """shape 是否被多个 transform 共用（Maya 实例）。"""
+    shapes = cmds.listRelatives(
+        transform, shapes=True, noIntermediate=True, fullPath=True) or []
+    for shape in shapes:
+        if len(cmds.listRelatives(shape, allParents=True) or []) > 1:
+            return True
+    return False
 
 
 def _ensure_unique_mesh(transform):
@@ -73,13 +86,7 @@ def _ensure_unique_mesh(transform):
     直接导出实例时，Maya FBX 会把共享同一 shape 的所有 transform 一起展开；
     必须先变成独立物体，临时副本才能单独导出。
     """
-    shapes = cmds.listRelatives(transform, shapes=True, noIntermediate=True, fullPath=True) or []
-    shared = False
-    for shape in shapes:
-        if len(cmds.listRelatives(shape, allParents=True) or []) > 1:
-            shared = True
-            break
-    if not shared:
+    if not _shape_is_shared(transform):
         return transform
     cmds.select(transform, r=True)
     # Maya 2018+：Modify > Convert > Instance to Object
@@ -91,36 +98,231 @@ def _ensure_unique_mesh(transform):
     return sel[0] if sel else transform
 
 
-def _export_fbx(node, out_path, export_name=None):
-    """把单个 transform 导出为对象空间 FBX，不改动原场景节点。
-
-    Maya 导出选中时会把世界变换烘焙进顶点。若带着旋转/缩放导出，FBX 顶点
-    就成了世界坐标，场景再按世界矩阵摆放会双重叠加。实例还会把共享 shape
-    的所有成员一起展开进 FBX。
-
-    做法：复制临时物体 → 转成独立几何 → 解父到世界 → 世界矩阵归零 → 导出 →
-    删除临时物体。不依赖 undo（cmds.file 导出常会冲掉 undo 队列）。
-
-    临时物体固定命名为 __MTU_Mesh__（与场景物体不冲突），返回该短名供
-    .meta 的 fileIDToRecycleName 匹配。export_name 参数保留兼容，已忽略。
-    """
-    orig = cmds.ls(selection=True, long=True)
-    tmp = None
-    used_name = _TEMP_EXPORT_NAME
+def _cleanup_temp_exports():
+    """清掉上次崩溃/延迟删除残留的临时导出节点。"""
+    leftovers = cmds.ls(_TEMP_EXPORT_PREFIX + "*", long=True) or []
+    if not leftovers:
+        return
     try:
-        # 清掉上次残留
-        if cmds.objExists(used_name):
-            cmds.delete(used_name)
-        tmp = cmds.duplicate(node, returnRootsOnly=True)[0]
+        cmds.select(clear=True)
+    except Exception:
+        pass
+    try:
+        cmds.delete(leftovers)
+    except Exception:
+        for n in leftovers:
+            if cmds.objExists(n):
+                try:
+                    cmds.delete(n)
+                except Exception:
+                    pass
+
+
+def _deferred_delete(nodes):
+    """空闲时再删节点，避免 Outliner 仍握着 Qt 指针时立即 delete 崩溃。"""
+    names = [n for n in (nodes or []) if n]
+
+    def _do():
+        try:
+            cmds.select(clear=True)
+        except Exception:
+            pass
+        for n in names:
+            if cmds.objExists(n):
+                try:
+                    cmds.delete(n)
+                except Exception:
+                    pass
+        _cleanup_temp_exports()
+
+    try:
+        cmds.evalDeferred(_do)
+    except Exception:
+        _do()
+
+
+def _finish_fbx_mesh_name(out_path, desired, fallback):
+    """确定写入 .meta 的 mesh 名。
+
+    Binary FBX 无法文本改名：直接用 desired（与 fileIDToRecycleName 对齐）。
+    ASCII 时仍尝试强制改 Geometry 名（兼容旧文件）。
+    """
+    desired = _sanitize_maya_name(desired)
+    parsed = _read_fbx_mesh_name(out_path)
+    if parsed is None:
+        # Binary 或读不到：meta 用目标名
+        debug.log("FBX mesh name (binary/meta): %s" % desired)
+        return desired
+    if parsed == desired:
+        return desired
+    forced = _force_fbx_mesh_name(out_path, desired)
+    if forced:
+        return forced
+    debug.log("FBX mesh keep %s (want %s)" % (parsed, desired))
+    return parsed or fallback or desired
+
+
+def _unique_short_name(base):
+    """生成场景内可用的短名。"""
+    if not cmds.objExists(base):
+        return base
+    i = 1
+    while cmds.objExists("%s_%d" % (base, i)):
+        i += 1
+    return "%s_%d" % (base, i)
+
+
+def _sanitize_maya_name(name):
+    """去掉命名空间，得到可用短名。"""
+    if not name:
+        return "Mesh"
+    name = name.split("|")[-1]
+    if ":" in name:
+        name = name.split(":")[-1]
+    return name or "Mesh"
+
+
+def _list_fbx_mesh_names(fbx_path):
+    """列出 ASCII FBX 中所有 Geometry:: Mesh 名。"""
+    try:
+        with open(fbx_path, "rb") as fh:
+            data = fh.read()
+    except Exception:
+        return []
+    if b"Kaydara FBX Binary" in data[:64]:
+        return []
+    try:
+        text = data.decode("utf-8", "ignore")
+    except Exception:
+        return []
+    names = re.findall(r'"Geometry::([^"]+)"\s*,\s*"Mesh"', text)
+    # 保序去重
+    seen = set()
+    out = []
+    for n in names:
+        if n not in seen:
+            seen.add(n)
+            out.append(n)
+    return out
+
+
+def _force_fbx_mesh_name(fbx_path, desired):
+    """把 ASCII FBX 内所有 Mesh Geometry / 对应 Model 名统一成 desired。
+
+    Maya 复制后 shape 常变成 SM_Bucket_Small_2 这类名字，不能只替换临时 transform 名。
+    """
+    desired = _sanitize_maya_name(desired)
+    try:
+        with open(fbx_path, "rb") as fh:
+            data = fh.read()
+    except Exception:
+        return None
+    if b"Kaydara FBX Binary" in data[:64]:
+        debug.log("FBX is binary; cannot rename mesh to %s" % desired)
+        return None
+    try:
+        text = data.decode("utf-8", "ignore")
+    except Exception:
+        return None
+
+    mesh_names = re.findall(r'"Geometry::([^"]+)"\s*,\s*"Mesh"', text)
+    # 也收集 Model:: 节点名（与 Geometry 常成对）
+    model_names = re.findall(r'"Model::([^"]+)"\s*,\s*"Mesh"', text)
+    to_replace = []
+    seen = set()
+    for n in mesh_names + model_names:
+        if n and n != desired and n not in seen:
+            seen.add(n)
+            to_replace.append(n)
+
+    if not to_replace:
+        debug.log("FBX mesh already named %s" % desired)
+        return desired
+
+    text2 = text
+    for old in to_replace:
+        text2 = text2.replace('"' + old + '"', '"' + desired + '"')
+        text2 = text2.replace("::" + old, "::" + desired)
+        # shape 后缀
+        if old.endswith("Shape"):
+            continue
+        shape_old = old + "Shape"
+        if shape_old in text2 and shape_old != desired:
+            text2 = text2.replace('"' + shape_old + '"', '"' + desired + '"')
+            text2 = text2.replace("::" + shape_old, "::" + desired)
+
+    if text2 == text:
+        debug.log("FBX force rename: no change (%s)" % ", ".join(to_replace))
+        return to_replace[0]
+
+    try:
+        with open(fbx_path, "wb") as fh:
+            fh.write(text2.encode("utf-8"))
+    except Exception as e:
+        debug.log("FBX force rename write failed: %s" % e)
+        return to_replace[0]
+
+    debug.log("FBX mesh forced %s -> %s" % (", ".join(to_replace), desired))
+    return desired
+
+
+def _export_fbx_inplace(src_long, out_path, desired):
+    """非实例：临时把世界矩阵归零后导出，再还原。无 duplicate/delete。"""
+    world_mat = cmds.xform(src_long, q=True, ws=True, matrix=True)
+    try:
+        pivots = cmds.xform(src_long, q=True, ws=True, pivots=True)
+    except Exception:
+        pivots = None
+    try:
+        cmds.xform(src_long, ws=True, matrix=_IDENTITY_MATRIX)
+        try:
+            cmds.xform(src_long, ws=True, pivots=(0, 0, 0))
+        except Exception:
+            pass
+        _configure_fbx_export()
+        cmds.select(src_long, r=True)
+        cmds.file(out_path, force=True, exportSelected=True, type="FBX export")
+        return _finish_fbx_mesh_name(
+            out_path, desired, _sanitize_maya_name(src_long))
+    finally:
+        try:
+            cmds.xform(src_long, ws=True, matrix=world_mat)
+        except Exception:
+            pass
+        if pivots is not None:
+            try:
+                cmds.xform(src_long, ws=True, pivots=tuple(pivots[:3]))
+            except Exception:
+                pass
+        try:
+            cmds.select(clear=True)
+        except Exception:
+            pass
+
+
+def _export_fbx_via_temp(src_long, out_path, desired):
+    """实例：必须 duplicate + ConvertInstanceToObject；删除延后到 idle。
+
+    尽量把临时物体命名为 desired，使 Binary FBX 内 mesh 名正确。
+    """
+    tmp = None
+    desired = _sanitize_maya_name(desired)
+    if cmds.objExists(desired):
+        temp_name = _unique_short_name(_TEMP_EXPORT_PREFIX + "0")
+    else:
+        temp_name = desired
+    used_name = temp_name
+    try:
+        tmp = cmds.duplicate(src_long, returnRootsOnly=True)[0]
         tmp = cmds.ls(tmp, long=True)[0]
         if cmds.listRelatives(tmp, parent=True):
             tmp = cmds.parent(tmp, world=True)[0]
             tmp = cmds.ls(tmp, long=True)[0]
         tmp = _ensure_unique_mesh(tmp)
-        tmp = cmds.rename(tmp, used_name)
+        tmp = cmds.rename(tmp, temp_name)
         tmp = cmds.ls(tmp, long=True)[0]
-        used_name = tmp.split('|')[-1]
-        # 归零世界变换 + 枢轴，确保导出烘焙后顶点仍是对象空间
+        used_name = tmp.split("|")[-1]
+
         cmds.xform(tmp, ws=True, matrix=_IDENTITY_MATRIX)
         try:
             cmds.xform(tmp, ws=True, pivots=(0, 0, 0))
@@ -128,23 +330,45 @@ def _export_fbx(node, out_path, export_name=None):
             pass
         _configure_fbx_export()
         cmds.select(tmp, r=True)
-        # FBXExport 的 -s 是纯标志位，经 cmds 传布尔值会报语法错误；改用 file 命令
         cmds.file(out_path, force=True, exportSelected=True, type="FBX export")
-        return used_name
+        return _finish_fbx_mesh_name(out_path, desired, used_name)
     finally:
+        # 先藏起来并清空选择，再延迟删除（同步 delete 易触发 Outliner/Qt 崩溃）
+        to_del = []
         if tmp and cmds.objExists(tmp):
-            cmds.delete(tmp)
-        # 再扫一遍，防止 rename 后路径变化漏删
-        if cmds.objExists(_TEMP_EXPORT_NAME):
-            cmds.delete(_TEMP_EXPORT_NAME)
-        if orig:
-            alive = [n for n in orig if cmds.objExists(n)]
-            if alive:
-                cmds.select(alive, r=True)
-            else:
-                cmds.select(clear=True)
-        else:
+            to_del.append(tmp)
+        elif cmds.objExists(temp_name):
+            to_del.append(temp_name)
+        try:
             cmds.select(clear=True)
+        except Exception:
+            pass
+        for n in to_del:
+            try:
+                cmds.hide(n)
+            except Exception:
+                pass
+        _deferred_delete(to_del)
+
+
+def _export_fbx(node, out_path, export_name=None):
+    """把单个 transform 导出为对象空间 FBX。
+
+    - 非实例：就地归零世界矩阵 → 导出 → 还原（不 duplicate/delete，避免 Qt 崩溃）
+    - 实例：临时副本 + ConvertInstanceToObject → 导出 → 延迟删除
+    返回最终 mesh 短名，供 .meta 的 fileIDToRecycleName 匹配。
+    """
+    desired = _sanitize_maya_name(export_name or node)
+    src_long = cmds.ls(node, long=True)[0]
+    try:
+        cmds.select(clear=True)
+    except Exception:
+        pass
+    if _shape_is_shared(src_long):
+        debug.log("FBX via temp (instanced): %s -> %s" % (src_long, desired))
+        return _export_fbx_via_temp(src_long, out_path, desired)
+    debug.log("FBX inplace (unique): %s -> %s" % (src_long, desired))
+    return _export_fbx_inplace(src_long, out_path, desired)
 
 
 def _read_fbx_mesh_name(fbx_path):
@@ -253,15 +477,24 @@ def _long_name(node):
     return longs[0] if longs else node
 
 
-def _make_item(transform, shape, prefab_name, used):
-    """构造导出项，并对重名 Prefab 追加序号。"""
+def _make_item(transform, shape, prefab_name, used, mesh_name=None):
+    """构造导出项，并对重名 Prefab 追加序号。
+
+    mesh_name：写入 FBX Geometry 的网格名；默认与 prefab_name 相同。
+    非实例化应传入 Maya 原始短名，避免去尾数字或重名序号改写 mesh 名。
+    """
     name = prefab_name
     if name in used:
         used[name] += 1
         name = "%s_%d" % (prefab_name, used[name])
     else:
         used[name] = 1
-    return {"transform": transform, "shape": shape, "prefab_name": name}
+    return {
+        "transform": transform,
+        "shape": shape,
+        "prefab_name": name,
+        "mesh_name": mesh_name or prefab_name,
+    }
 
 
 def export(output_dir, selection=None, scene_name="MayaToUnity"):
@@ -281,6 +514,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             os.makedirs(d)
 
     _load_fbx_plugin()
+    _cleanup_temp_exports()
 
     debug.clear_log()
     debug.log("Export started -> %s" % output_dir)
@@ -298,25 +532,67 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
     shape_mats = _shape_to_materials(materials)
 
-    # 2. 实例分析
+    # 2. 实例 / 相同网格分析（每组只导一份 FBX）
     groups, singletons = analyze(selection)
-    debug.log("Instance groups: %d, singletons: %d" % (len(groups), len(singletons)))
+    debug.log("Shared-mesh groups: %d, singletons: %d" % (len(groups), len(singletons)))
+    for g in groups:
+        debug.log(
+            "  [Group kind=%s] prefab=%s base=%s members=%d"
+            % (getattr(g, "kind", "instance"), g.prefab_name,
+               g.base, len(g.members))
+        )
+        for m in g.members:
+            debug.log("      - %s%s" % (
+                m, " (base/FBX)" if _long_name(m) == _long_name(g.base) else ""))
 
-    # 3. 组装导出项（去重 Prefab 名）
+    # 3. 组装导出项（去重 Prefab 名）——组员不单独进 export_items
     used = {}
     export_items = []
     for g in groups:
         export_items.append(_make_item(
-            _long_name(g.base), g.shape, g.prefab_name, used))
+            _long_name(g.base), g.shape, g.prefab_name, used,
+            mesh_name=g.prefab_name))
     for s in singletons:
         s_long = _long_name(s)
-        leaf = s_long.split('|')[-1]
+        leaf = _sanitize_maya_name(s_long)
         shape = (cmds.listRelatives(s_long, shapes=True, noIntermediate=True) or [None])[0]
-        export_items.append(_make_item(s_long, shape, strip_trailing_digits(leaf), used))
+        export_items.append(_make_item(s_long, shape, leaf, used, mesh_name=leaf))
 
     if not export_items:
         cmds.warning(to_maya_ui("Unity_MayaToUnity: no mesh to export."))
         return None
+
+    # 清掉「真 Instance」组员残留的旧 FBX/Prefab（不含独立模型）
+    for g in groups:
+        if getattr(g, "kind", "instance") != "instance":
+            continue
+        base_short = _sanitize_maya_name(g.base)
+        keep = set([base_short, g.prefab_name])
+        # 旧版无后缀的文件名也纳入保留/对照
+        if g.prefab_name.endswith("_Inst"):
+            keep.add(g.prefab_name[:-5])
+        for m in g.members:
+            leaf = _sanitize_maya_name(m)
+            if leaf in keep:
+                continue
+            # 仅当该短名不在 singletons 里时才删，防止误删独立模型
+            singleton_names = set(
+                _sanitize_maya_name(s) for s in singletons)
+            if leaf in singleton_names:
+                continue
+            for folder, ext in (
+                (models_dir, ".fbx"),
+                (models_dir, ".fbx.meta"),
+                (prefabs_dir, ".prefab"),
+                (prefabs_dir, ".prefab.meta"),
+            ):
+                obsolete = os.path.join(folder, leaf + ext)
+                if os.path.isfile(obsolete):
+                    try:
+                        os.remove(obsolete)
+                        debug.log("Removed obsolete instance member asset: %s" % obsolete)
+                    except Exception as exc:
+                        debug.log("Failed to remove %s: %s" % (obsolete, exc), warn=True)
 
     # 在任何导出操作前缓存变换；mesh 用 long name 作 key
     mesh_paths = []
@@ -349,54 +625,72 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     for item in export_items:
         item["transform"] = _long_name(item["transform"])
 
-    for item in export_items:
-        t = item["transform"]
-        shape = item["shape"]
-        prefab_name = item["prefab_name"]
+    # 导出期间暂停 UI 刷新，减轻 Outliner 在 duplicate/delete 时崩溃
+    try:
+        cmds.refresh(suspend=True)
+    except Exception:
+        pass
+    try:
+        for item in export_items:
+            t = item["transform"]
+            shape = item["shape"]
+            prefab_name = item["prefab_name"]
+            mesh_want = item.get("mesh_name") or prefab_name
 
-        fbx_guid = guid_from_string("fbx:" + prefab_name)
-        prefab_guid = guid_from_string("prefab:" + prefab_name)
+            fbx_guid = guid_from_string("fbx:" + prefab_name)
+            prefab_guid = guid_from_string("prefab:" + prefab_name)
 
-        debug.log("Item: transform=%s shape=%s prefab=%s" % (t, shape, prefab_name))
+            debug.log("Item: transform=%s shape=%s prefab=%s mesh=%s" % (
+                t, shape, prefab_name, mesh_want))
 
-        fbx_path = os.path.join(models_dir, prefab_name + ".fbx")
-        # 临时物体固定名 __MTU_Mesh__，避免与场景节点重名
-        exported_name = _export_fbx(t, fbx_path)
+            fbx_path = os.path.join(models_dir, prefab_name + ".fbx")
+            # 非实例化 mesh 用原模型名；实例组用共享 prefab 名
+            exported_name = _export_fbx(t, fbx_path, export_name=mesh_want)
 
-        parsed_mesh = _read_fbx_mesh_name(fbx_path)
-        if parsed_mesh is None:
-            debug.log("FBX is binary; use export name as mesh name: %s" % exported_name)
-        mesh_name = parsed_mesh or exported_name or _TEMP_EXPORT_NAME
-        debug.log("  FBX mesh name: %s" % mesh_name)
+            parsed_mesh = _read_fbx_mesh_name(fbx_path)
+            if parsed_mesh is None:
+                debug.log("FBX is binary; use export name as mesh name: %s" % exported_name)
+            mesh_name = parsed_mesh or exported_name or mesh_want
+            debug.log("  FBX mesh name: %s (want %s)" % (mesh_name, mesh_want))
 
-        shape_key = shape.split('|')[-1] if shape else None
-        mats_for_shape = shape_mats.get(shape_key) or []
-        material_guids = [m.guid for m in mats_for_shape]
-        debug.log("  fbx_guid=%s prefab_guid=%s materials=%s" % (
-            fbx_guid, prefab_guid,
-            [m.name for m in mats_for_shape] if mats_for_shape else "(none)"))
+            shape_key = shape.split('|')[-1] if shape else None
+            mats_for_shape = shape_mats.get(shape_key) or []
+            material_guids = [m.guid for m in mats_for_shape]
+            debug.log("  fbx_guid=%s prefab_guid=%s materials=%s" % (
+                fbx_guid, prefab_guid,
+                [m.name for m in mats_for_shape] if mats_for_shape else "(none)"))
 
-        # 先写 .mat，再写 FBX .meta（含 Remapped Materials 引用）
-        for material in mats_for_shape:
-            if material.name in written_mats:
-                continue
-            written_mats.add(material.name)
-            mat_path = os.path.join(materials_dir, material.name + ".mat")
-            _write_text(mat_path, yaml_writer.material_file(material))
-            _write_text(mat_path + ".meta", yaml_writer.material_meta(material.guid))
-            generated.append(mat_path)
+            # 先写 .mat，再写 FBX .meta（含 Remapped Materials 引用）
+            for material in mats_for_shape:
+                if material.name in written_mats:
+                    continue
+                written_mats.add(material.name)
+                mat_path = os.path.join(materials_dir, material.name + ".mat")
+                _write_text(mat_path, yaml_writer.material_file(material))
+                _write_text(mat_path + ".meta", yaml_writer.material_meta(material.guid))
+                generated.append(mat_path)
 
-        _write_text(
-            fbx_path + ".meta",
-            yaml_writer.fbx_meta(fbx_guid, mesh_name, mats_for_shape),
-        )
+            _write_text(
+                fbx_path + ".meta",
+                yaml_writer.fbx_meta(fbx_guid, mesh_name, mats_for_shape),
+            )
 
-        prefab_path = os.path.join(prefabs_dir, prefab_name + ".prefab")
-        _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guids))
-        _write_text(prefab_path + ".meta", yaml_writer.prefab_meta(prefab_guid))
+            prefab_path = os.path.join(prefabs_dir, prefab_name + ".prefab")
+            _write_text(prefab_path, yaml_writer.prefab_file(prefab_name, fbx_guid, material_guids))
+            _write_text(prefab_path + ".meta", yaml_writer.prefab_meta(prefab_guid))
 
-        prefab_guid_by_transform[t] = prefab_guid
-        generated.append(prefab_path)
+            prefab_guid_by_transform[t] = prefab_guid
+            generated.append(prefab_path)
+    finally:
+        try:
+            cmds.refresh(suspend=False)
+        except Exception:
+            pass
+        try:
+            cmds.select(clear=True)
+        except Exception:
+            pass
+        # 不要 force refresh：Outliner 立刻重建时若叠鼠标事件会 Qt SharedPointer 崩溃
 
     # 5. 补写尚未写出的材质（理论上上面循环已覆盖）
     for item in export_items:

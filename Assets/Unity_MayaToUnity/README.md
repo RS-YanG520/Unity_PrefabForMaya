@@ -8,7 +8,7 @@
 - **实例 → Prefab**：每组只导出一个网格（FBX），生成一个 Prefab，其余实例在场景里以该 Prefab 的实例形式、按各自世界变换摆放。
 - **唯一网格**：不参与实例化的唯一网格也各导出为一个 Prefab。
 - **材质 / 贴图**：读取 Maya 主颜色（baseColor / color）、主贴图、metalness 贴图、法线贴图；**同一 mesh 多材质按面集导出为多个 Materials 槽**。
-- **材质转 PBR**：菜单可将非 `standardSurface` / Arnold 材质一键换成 PBR（保留原名，源材质备份为 `*_mtu_src`），并可一键还原。
+- **材质转 PBR**：工具窗口可将非 `standardSurface` / Arnold 材质一键换成 PBR（保留原名，源材质备份为 `*_mtu_src`），并可一键还原。
 - **导出范围可选**：选中对象时只导出选中；不选时导出整个场景。
 
 ## 环境
@@ -28,7 +28,8 @@ D:\My Documents\maya\2018\zh_CN\scripts\Unity_MayaToUnity\
 
 ```
 Unity_MayaToUnity/
-  __init__.py           # 包入口 + 菜单注册
+  __init__.py           # 包入口 + 打开工具窗口
+  ui.py                 # PySide2 工具窗口
   constants.py          # GUID / fileID 约定
   coords.py             # Maya→Unity 坐标转换
   instance_detector.py  # 实例识别
@@ -39,16 +40,18 @@ Unity_MayaToUnity/
 
 ## 使用
 
-### 方式一：菜单
+### 方式一：工具窗口（推荐）
 
-在 Maya 脚本编辑器（Script Editor）里运行一次：
+在 Maya 脚本编辑器（Script Editor）里运行：
 
 ```python
 import Unity_MayaToUnity
 Unity_MayaToUnity.install_menu()
 ```
 
-主菜单栏会出现 **Unity MayaToUnity**。菜单底部 **Language / 语言** 可切换中英文（写入 Maya optionVar，下次自动记住）。
+会弹出 **Unity MayaToUnity** 工具窗口（不再占用主菜单栏）。窗口内可导出、诊断、材质转 PBR / 还原、重载模块、开调试日志，以及切换中英文（写入 Maya optionVar，下次记住）。
+
+`show_toolbox()` 与 `install_menu()` 等价。
 
 ### 方式二：直接调用
 
@@ -70,8 +73,8 @@ Unity_MayaToUnity.export(
 
 ## 调试
 
-- **诊断场景（dry-run）**：菜单「诊断当前场景...」，或脚本里 `Unity_MayaToUnity.diagnose()`。不导出，打印实例组 / 唯一网格 / 材质 / 贴图及坐标预览。
-- **开启调试日志**：菜单勾选「开启调试日志」，或 `Unity_MayaToUnity.set_debug(True)`。导出过程实时打印关键信息（实例组、mesh 名、GUID、材质映射等）。
+- **诊断场景（dry-run）**：工具窗口「诊断当前场景...」，或脚本里 `Unity_MayaToUnity.diagnose()`。不导出，打印实例组 / 唯一网格 / 材质 / 贴图及坐标预览。
+- **开启调试日志**：工具窗口勾选「开启调试日志」，或 `Unity_MayaToUnity.set_debug(True)`。导出过程实时打印关键信息（实例组、mesh 名、GUID、材质映射等）。
 - **诊断报告文件**：每次导出都会在输出目录写一份 `export_report.log`，记录完整过程。排查「mesh 丢失 / 材质紫色」时优先看它——尤其核对 `FBX mesh 名` 是否与 `.meta` 里 `fileIDToRecycleName` 的 key 一致。
 
 ## 输出结构

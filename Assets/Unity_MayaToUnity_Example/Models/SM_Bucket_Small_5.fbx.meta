@@ -7,8 +7,8 @@ ModelImporter:
     400000: //RootNode
     2300000: //RootNode
     3300000: //RootNode
-    4300000: __MTU_Mesh__
-    4300002: __MTU_Mesh__
+    4300000: SM_Bucket_Small_5
+    4300002: SM_Bucket_Small_5
   externalObjects:
   - first:
       type: UnityEngine:Material

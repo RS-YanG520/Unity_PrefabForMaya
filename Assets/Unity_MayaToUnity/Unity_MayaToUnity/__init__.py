@@ -15,7 +15,8 @@
     import Unity_MayaToUnity
     Unity_MayaToUnity.install_menu()
 
-菜单支持中英文切换（Language / 语言），偏好写入 optionVar mtu_ui_lang。
+会弹出工具窗口（不再往 Maya 主菜单栏塞标签）。界面中英文可切换，
+偏好写入 optionVar mtu_ui_lang。
 """
 from __future__ import print_function
 
@@ -26,9 +27,10 @@ import debug
 import material_convert
 from constants import to_maya_ui
 import i18n
+import ui as toolbox_ui
 
 
-MENU_NAME = "unity_maya_to_unity_menu"
+MENU_NAME = "unity_maya_to_unity_menu"  # 旧菜单名，仅用于清理
 
 
 def _pick_output_dir():
@@ -46,18 +48,38 @@ def _export_with_dialog():
     if not out:
         return
     selection = cmds.ls(selection=True) or None
-    generated = export(out, selection=selection, scene_name="MayaToUnity")
-    if generated:
+    # 必须等 UI 事件结束后再改场景，否则 Outliner/Qt 易 ACCESS_VIOLATION
+    def _run():
+        try:
+            generated = export(out, selection=selection, scene_name="MayaToUnity")
+        except Exception as exc:
+            cmds.warning(to_maya_ui("Unity_MayaToUnity export failed: %s" % exc))
+            return
+        if not generated:
+            return
         msg = i18n.tr("dlg_export_msg", len(generated), to_maya_ui(out))
         ok = i18n.tr("dlg_ok")
-        cmds.confirmDialog(
-            title=i18n.tr("dlg_export_title"),
-            message=msg,
-            button=[ok],
-            defaultButton=ok,
-            cancelButton=ok,
-            dismissString=ok,
-        )
+        title = i18n.tr("dlg_export_title")
+
+        def _dlg():
+            cmds.confirmDialog(
+                title=title,
+                message=msg,
+                button=[ok],
+                defaultButton=ok,
+                cancelButton=ok,
+                dismissString=ok,
+            )
+
+        try:
+            cmds.evalDeferred(_dlg)
+        except Exception:
+            _dlg()
+
+    try:
+        cmds.evalDeferred(_run)
+    except Exception:
+        _run()
 
 
 def _confirm_report(title_key, result):
@@ -91,53 +113,14 @@ def restore_original_materials():
     return result
 
 
-def _set_language(lang, *_):
-    i18n.set_lang(lang, rebuild_menu=True)
-
-
 def install_menu():
-    """在主菜单栏安装 Unity MayaToUnity 菜单。"""
-    main = "MayaWindow"
-    if not cmds.window(main, q=True, exists=True):
-        cmds.warning(i18n.tr("warn_no_main_window"))
-        return
-    if cmds.menu(MENU_NAME, exists=True):
-        cmds.deleteUI(MENU_NAME)
+    """打开工具窗口（兼容旧名 install_menu；不再安装 Maya 主菜单）。"""
+    return show_toolbox()
 
-    lang = i18n.get_lang()
-    cmds.menu(MENU_NAME, label=i18n.tr("menu_root"), parent=main, tearOff=True)
-    cmds.menuItem(label=i18n.tr("menu_export"), command=lambda *_: _export_with_dialog())
-    cmds.menuItem(label=i18n.tr("menu_diagnose"), command=lambda *_: diagnose())
-    cmds.menuItem(divider=True)
-    cmds.menuItem(
-        label=i18n.tr("menu_convert_pbr"),
-        command=lambda *_: convert_materials_to_pbr(),
-    )
-    cmds.menuItem(
-        label=i18n.tr("menu_restore_mat"),
-        command=lambda *_: restore_original_materials(),
-    )
-    cmds.menuItem(divider=True)
-    cmds.menuItem(label=i18n.tr("menu_reload"), command=lambda *_: reload_modules())
-    cmds.menuItem(
-        label=i18n.tr("menu_debug"),
-        checkBox=bool(debug.DEBUG),
-        command=_toggle_debug,
-    )
-    cmds.menuItem(divider=True)
-    cmds.menuItem(label=i18n.tr("menu_language"), subMenu=True)
-    cmds.radioMenuItemCollection()
-    cmds.menuItem(
-        label=i18n.tr("lang_en"),
-        radioButton=(lang == "en"),
-        command=lambda *_: _set_language("en"),
-    )
-    cmds.menuItem(
-        label=i18n.tr("lang_zh"),
-        radioButton=(lang == "zh"),
-        command=lambda *_: _set_language("zh"),
-    )
-    cmds.setParent("..", menu=True)
+
+def show_toolbox(force_recreate=False):
+    """显示 / 前置工具窗口。"""
+    return toolbox_ui.show_toolbox(force_recreate=force_recreate)
 
 
 def set_debug(enabled):
@@ -146,7 +129,7 @@ def set_debug(enabled):
 
 
 def reload_modules():
-    """强制重载本包子模块（改完代码后在 Maya 里先跑这个再导出）。
+    """强制重载本包子模块（改完代码后在工具窗口点 Reload，或脚本里调用）。
 
     注意：不能先删掉 sys.modules['Unity_MayaToUnity'] 再 import，
     否则会触发 Parent module not found 警告。
@@ -162,45 +145,60 @@ def reload_modules():
         if k in (
             "exporter", "coords", "constants", "debug",
             "instance_detector", "material_mapper", "yaml_writer", "hierarchy",
-            "material_convert", "i18n",
+            "material_convert", "i18n", "ui",
         ):
             path = getattr(mod, "__file__", "") or ""
             if "Unity_MayaToUnity" in path.replace("\\", "/"):
                 doomed.append(k)
     for k in doomed:
         del sys.modules[k]
+
     import Unity_MayaToUnity as pkg
     reload(pkg)
-    pkg.install_menu()
-    print(i18n.tr("msg_reloaded"))
+
+    def _rebuild():
+        try:
+            # 强制重建窗口，绑定到新代码
+            pkg.show_toolbox(force_recreate=True)
+        except Exception:
+            pass
+        try:
+            print(pkg.i18n.tr("msg_reloaded"))
+        except Exception:
+            print("Unity_MayaToUnity: modules reloaded.")
+
+    try:
+        cmds.evalDeferred(_rebuild)
+    except Exception:
+        _rebuild()
     return True
 
 
-def diagnose():
-    """dry-run 诊断当前场景（不导出），结果打印到脚本编辑器并弹窗提示。"""
+def diagnose(show_dialog=False):
+    """dry-run 诊断当前场景（不导出）。
+
+    返回 diagnose_scene 的 dict（summary / meshes / report）。
+    工具窗口会显示汇总与模型列表；脚本编辑器仍打印完整 report。
+    """
     selection = cmds.ls(selection=True) or None
-    debug.diagnose_scene(selection)
-    ok = i18n.tr("dlg_ok")
-    cmds.confirmDialog(
-        title=i18n.tr("dlg_diagnose_title"),
-        message=i18n.tr("dlg_diagnose_msg"),
-        button=[ok],
-        defaultButton=ok,
-        cancelButton=ok,
-        dismissString=ok,
-    )
-
-
-def _toggle_debug(state, *_):
-    debug.set_debug(bool(state))
-
-
-def _auto_install():
-    """import 时延迟安装菜单（等主窗口就绪）。"""
-    try:
-        cmds.evalDeferred(install_menu)
-    except Exception:
-        pass
-
-
-_auto_install()
+    result = debug.diagnose_scene(selection)
+    if show_dialog:
+        ok = i18n.tr("dlg_ok")
+        summary = (result or {}).get("summary") or {}
+        msg = i18n.tr(
+            "ui_diag_summary",
+            int(summary.get("model_count", 0)),
+            int(summary.get("material_count", 0)),
+            int(summary.get("texture_count", 0)),
+            int(summary.get("total_faces", 0)),
+            summary.get("total_export_size") or "0 B",
+        )
+        cmds.confirmDialog(
+            title=i18n.tr("dlg_diagnose_title"),
+            message=msg,
+            button=[ok],
+            defaultButton=ok,
+            cancelButton=ok,
+            dismissString=ok,
+        )
+    return result
