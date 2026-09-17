@@ -38,6 +38,82 @@ _STRINGS = {
         "en": u"Reload Plugin Modules",
         "zh": u"重新加载插件模块",
     },
+    "menu_texdrop": {
+        "en": u"Drag Texture onto AE Map Button",
+        "zh": u"允许拖贴图到属性编辑器图标",
+    },
+    "ui_texdrop": {
+        "en": u"Enable Texture Drag-Drop",
+        "zh": u"开启贴图拖放",
+    },
+    "ui_texdrop_tip": {
+        "en": u"Drag onto AE map buttons, material swatch, or a mesh in the viewport.",
+        "zh": u"可拖到属性槽图标、材质预览球，或视口中的模型上。",
+    },
+    "ui_texdrop_siblings": {
+        "en": u"Auto-Fill Sibling Maps",
+        "zh": u"单张拖材质球/模型时自动补齐同套贴图",
+    },
+    "ui_texdrop_siblings_tip": {
+        "en": u"When enabled, dropping one map on the swatch or a mesh also finds other suffix maps with the same base name in the same folder.",
+        "zh": u"勾选后：只拖一张到材质球或视口模型时，会在同目录按后缀自动找齐同套其它贴图。不勾选：只贴这一张。",
+    },
+    "ui_texdrop_rules_btn": {
+        "en": u"Texture Suffix Rules...",
+        "zh": u"贴图后缀规则...",
+    },
+    "ui_texdrop_rules_title": {
+        "en": u"Texture Suffix Rules",
+        "zh": u"贴图后缀规则",
+    },
+    "ui_texdrop_rules_tip": {
+        "en": u"Filename ending (e.g. _B, _N) maps to a material attribute. Longer suffixes match first. Drop multiple files onto the material swatch to auto-assign.",
+        "zh": u"文件名后缀（如 _B、_N）对应材质属性。较长后缀优先匹配。多选贴图拖到材质预览球即可自动分配。",
+    },
+    "ui_texdrop_col_suffix": {
+        "en": u"Suffix",
+        "zh": u"后缀",
+    },
+    "ui_texdrop_col_attr": {
+        "en": u"Attribute",
+        "zh": u"属性",
+    },
+    "ui_texdrop_col_label": {
+        "en": u"Label",
+        "zh": u"说明",
+    },
+    "ui_texdrop_rules_add": {
+        "en": u"Add",
+        "zh": u"添加",
+    },
+    "ui_texdrop_rules_del": {
+        "en": u"Remove",
+        "zh": u"删除",
+    },
+    "ui_texdrop_rules_reset": {
+        "en": u"Reset Defaults",
+        "zh": u"恢复默认",
+    },
+    "ui_texdrop_ok": {
+        "en": u"Unity_MayaToUnity: connected %s -> %s.%s (file: %s)",
+        "zh": u"Unity_MayaToUnity: 已连接 %s → %s.%s（file: %s）",
+    },
+    "ui_texdrop_skip": {
+        "en": u"Unity_MayaToUnity: skipped %s (%s)",
+        "zh": u"Unity_MayaToUnity: 已跳过 %s（%s）",
+    },
+    "ui_texdrop_batch_ok": {
+        "en": u"Unity_MayaToUnity: assigned %d texture(s) to %s by suffix rules.",
+        "zh": u"Unity_MayaToUnity: 已按后缀规则分配 %d 张贴图到 %s。",
+    },
+    "ui_texdrop_no_target": {
+        "en": u"Unity_MayaToUnity: drop on a material map button, the material swatch, or a mesh in the viewport.",
+        "zh": u"Unity_MayaToUnity: 请拖到属性槽图标、材质预览球，或视口中的模型上。",
+    },
+    "ui_texdrop_no_mesh": {
+        "en": u"Unity_MayaToUnity: no mesh under the cursor. Drop onto a model in the viewport.",
+        "zh": u"Unity_MayaToUnity: 光标下没有模型，请拖到视口中的网格物体上。",
+    },
     "menu_debug": {
         "en": u"Enable Debug Log",
         "zh": u"开启调试日志",
@@ -115,8 +191,8 @@ _STRINGS = {
         "zh": u"插件",
     },
     "ui_status_hint": {
-        "en": u"Tip: check Selection Only, then select meshes before Export.",
-        "zh": u"提示：勾选「仅选中」后先选物体再导出；不勾则导出全场景。",
+        "en": u"Tip: set export path above; check Selection Only to export selection only.",
+        "zh": u"提示：上方填写或浏览导出路径后点导出；勾选「仅选中」则只导当前选择。",
     },
     "ui_diag_title": {
         "en": u"Diagnosis",
@@ -178,9 +254,21 @@ _STRINGS = {
         "en": u"Help",
         "zh": u"帮助",
     },
+    "ui_btn_browse": {
+        "en": u"Browse",
+        "zh": u"浏览",
+    },
     "ui_btn_export": {
         "en": u"Export",
         "zh": u"导出",
+    },
+    "ui_path_placeholder": {
+        "en": u"Export folder path...",
+        "zh": u"填写或浏览导出目录...",
+    },
+    "ui_warn_no_path": {
+        "en": u"Unity_MayaToUnity: please enter or browse an export folder path.",
+        "zh": u"Unity_MayaToUnity: 请先填写或浏览选择导出目录。",
     },
     "ui_btn_diagnose": {
         "en": u"Diagnose",

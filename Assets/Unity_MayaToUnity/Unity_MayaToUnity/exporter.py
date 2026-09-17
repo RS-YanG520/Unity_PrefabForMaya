@@ -654,10 +654,18 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             debug.log("  FBX mesh name: %s (want %s)" % (mesh_name, mesh_want))
 
             shape_key = shape.split('|')[-1] if shape else None
+            # 防御：若 shape 误存成 uuid:/node: 身份键，改从 transform 解析
+            if (not shape_key) or shape_key.startswith("uuid:") or shape_key.startswith("node:"):
+                real_shapes = cmds.listRelatives(
+                    t, shapes=True, noIntermediate=True) or []
+                for s in real_shapes:
+                    if cmds.nodeType(s) == 'mesh':
+                        shape_key = s.split('|')[-1]
+                        break
             mats_for_shape = shape_mats.get(shape_key) or []
             material_guids = [m.guid for m in mats_for_shape]
-            debug.log("  fbx_guid=%s prefab_guid=%s materials=%s" % (
-                fbx_guid, prefab_guid,
+            debug.log("  fbx_guid=%s prefab_guid=%s shape_key=%s materials=%s" % (
+                fbx_guid, prefab_guid, shape_key,
                 [m.name for m in mats_for_shape] if mats_for_shape else "(none)"))
 
             # 先写 .mat，再写 FBX .meta（含 Remapped Materials 引用）

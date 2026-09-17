@@ -6,6 +6,8 @@ Maya 2018 / PySide2 / Python 2.7。
 """
 from __future__ import print_function
 
+import os
+
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 
@@ -28,10 +30,12 @@ import i18n
 WINDOW_OBJECT = "UnityMayaToUnityToolbox"
 WINDOW_TITLE = "Unity MayaToUnity"
 WORKSPACE_CONTROL = WINDOW_OBJECT + "WorkspaceControl"
+_EXPORT_DIR_VAR = "mtu_export_dir"
 # 接近 GS Toolbox 的窄条宽度
 _DEFAULT_WIDTH = 210
 _DEFAULT_HEIGHT = 520
 _BTN_H = 26
+_SIDE_BTN_W = 72
 
 _toolbox = None
 
@@ -138,19 +142,63 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.body_lay.setContentsMargins(4, 4, 4, 4)
         self.body_lay.setSpacing(3)
 
-        self.btn_export = self._btn(self._on_export)
+        # 路径框 + 右侧浏览；浏览下方为导出
+        self.edit_export_path = QtWidgets.QLineEdit()
+        self.edit_export_path.setMinimumHeight(_BTN_H)
+        self.edit_export_path.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.btn_browse = self._side_btn(self._on_browse)
+        self.btn_export = self._side_btn(self._on_export)
+
+        side_col = QtWidgets.QVBoxLayout()
+        side_col.setContentsMargins(0, 0, 0, 0)
+        side_col.setSpacing(3)
+        side_col.addWidget(self.btn_browse)
+        side_col.addWidget(self.btn_export)
+
+        path_row = QtWidgets.QHBoxLayout()
+        path_row.setContentsMargins(0, 0, 0, 0)
+        path_row.setSpacing(3)
+        path_row.addWidget(self.edit_export_path, 1)
+        path_row.addLayout(side_col)
+        self.body_lay.addLayout(path_row)
+
         self.btn_diagnose = self._btn(self._on_diagnose)
-        self.body_lay.addLayout(self._row(self.btn_export, self.btn_diagnose))
+        self.body_lay.addWidget(self.btn_diagnose)
 
         self.btn_convert = self._btn(self._on_convert)
         self.btn_restore = self._btn(self._on_restore)
         self.body_lay.addLayout(self._row(self.btn_convert, self.btn_restore))
+
+        self._load_export_path()
 
         self.body_lay.addWidget(_hline())
 
         self.chk_sel_only = QtWidgets.QCheckBox()
         self.chk_sel_only.setChecked(False)
         self.body_lay.addWidget(self.chk_sel_only)
+
+        self.chk_texdrop = QtWidgets.QCheckBox()
+        try:
+            import texture_drop
+            self.chk_texdrop.setChecked(texture_drop.is_enabled())
+        except Exception:
+            self.chk_texdrop.setChecked(True)
+        self.chk_texdrop.toggled.connect(self._on_texdrop)
+        self.body_lay.addWidget(self.chk_texdrop)
+
+        self.chk_tex_siblings = QtWidgets.QCheckBox()
+        try:
+            import texture_drop
+            self.chk_tex_siblings.setChecked(texture_drop.is_auto_siblings())
+        except Exception:
+            self.chk_tex_siblings.setChecked(True)
+        self.chk_tex_siblings.toggled.connect(self._on_tex_siblings)
+        self.body_lay.addWidget(self.chk_tex_siblings)
+
+        self.btn_tex_rules = self._btn(self._on_tex_rules)
+        self.btn_tex_rules.setMinimumHeight(_BTN_H)
+        self.body_lay.addWidget(self.btn_tex_rules)
 
         self.lbl_status = QtWidgets.QLabel()
         self.lbl_status.setWordWrap(True)
@@ -224,6 +272,17 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         btn.clicked.connect(slot)
         return btn
 
+    def _side_btn(self, slot):
+        """路径右侧窄按钮（浏览 / 导出）。"""
+        btn = QtWidgets.QPushButton()
+        btn.setMinimumHeight(_BTN_H)
+        btn.setFixedWidth(_SIDE_BTN_W)
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        btn.setCursor(QtCore.Qt.PointingHandCursor)
+        btn.clicked.connect(slot)
+        return btn
+
     def _row(self, *widgets):
         row = QtWidgets.QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -231,6 +290,26 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         for w in widgets:
             row.addWidget(w, 1)
         return row
+
+    def _load_export_path(self):
+        try:
+            if cmds.optionVar(exists=_EXPORT_DIR_VAR):
+                path = cmds.optionVar(q=_EXPORT_DIR_VAR) or ""
+                if path:
+                    self.edit_export_path.setText(path)
+        except Exception:
+            pass
+
+    def _save_export_path(self, path):
+        if not path:
+            return
+        try:
+            cmds.optionVar(sv=(_EXPORT_DIR_VAR, path))
+        except Exception:
+            pass
+
+    def _current_export_path(self):
+        return (self.edit_export_path.text() or "").strip()
 
     def _apply_style(self):
         # 贴近 Maya / GS Toolbox 深灰扁平风
@@ -283,6 +362,15 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             QLabel {
                 color: #e0e0e0;
                 font-size: 11px;
+            }
+            QLineEdit {
+                background-color: #4a4a4a;
+                border: 1px solid #2f2f2f;
+                border-radius: 2px;
+                color: #f0f0f0;
+                padding: 2px 4px;
+                font-size: 11px;
+                selection-background-color: #5285a6;
             }
             QComboBox, QDoubleSpinBox {
                 background-color: #4a4a4a;
@@ -377,8 +465,11 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.menu_help.setTitle(i18n.tr("ui_menu_help"))
         self.menu_lang.setTitle(i18n.tr("menu_language"))
 
+        self.btn_browse.setText(i18n.tr("ui_btn_browse"))
+        self.btn_browse.setToolTip(i18n.tr("dlg_export_caption"))
         self.btn_export.setText(i18n.tr("ui_btn_export"))
         self.btn_export.setToolTip(i18n.tr("menu_export"))
+        self.edit_export_path.setPlaceholderText(i18n.tr("ui_path_placeholder"))
         self.btn_diagnose.setText(i18n.tr("ui_btn_diagnose"))
         self.btn_diagnose.setToolTip(i18n.tr("menu_diagnose"))
         self.btn_convert.setText(i18n.tr("ui_btn_convert"))
@@ -387,6 +478,12 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.btn_restore.setToolTip(i18n.tr("menu_restore_mat"))
 
         self.chk_sel_only.setText(i18n.tr("ui_sel_only"))
+        self.chk_texdrop.setText(i18n.tr("ui_texdrop"))
+        self.chk_texdrop.setToolTip(i18n.tr("ui_texdrop_tip"))
+        self.chk_tex_siblings.setText(i18n.tr("ui_texdrop_siblings"))
+        self.chk_tex_siblings.setToolTip(i18n.tr("ui_texdrop_siblings_tip"))
+        self.btn_tex_rules.setText(i18n.tr("ui_texdrop_rules_btn"))
+        self.btn_tex_rules.setToolTip(i18n.tr("ui_texdrop_rules_tip"))
         self.lbl_status.setText(i18n.tr("ui_status_hint"))
         self.lbl_diag_title.setText(i18n.tr("ui_diag_title"))
         if not self.lbl_diag_summary.text():
@@ -421,6 +518,22 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.act_debug.setChecked(bool(debug.DEBUG))
         self.act_debug.blockSignals(False)
 
+        self.chk_texdrop.blockSignals(True)
+        try:
+            import texture_drop
+            self.chk_texdrop.setChecked(texture_drop.is_enabled())
+        except Exception:
+            pass
+        self.chk_texdrop.blockSignals(False)
+
+        self.chk_tex_siblings.blockSignals(True)
+        try:
+            import texture_drop
+            self.chk_tex_siblings.setChecked(texture_drop.is_auto_siblings())
+        except Exception:
+            pass
+        self.chk_tex_siblings.blockSignals(False)
+
     # -------------------------------------------------------------- actions
 
     def _defer(self, fn):
@@ -435,14 +548,32 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             return cmds.ls(selection=True) or []
         return None
 
+    def _on_browse(self):
+        start = self._current_export_path()
+        kwargs = {
+            "dialogStyle": 2,
+            "fileMode": 3,
+            "caption": i18n.tr("dlg_export_caption"),
+        }
+        if start and os.path.isdir(start):
+            kwargs["dir"] = start
+        result = cmds.fileDialog2(**kwargs)
+        if not result:
+            return
+        out = result[0]
+        self.edit_export_path.setText(out)
+        self._save_export_path(out)
+
     def _on_export(self):
+        out = self._current_export_path()
+        if not out:
+            cmds.warning(i18n.tr("ui_warn_no_path"))
+            return
+        self._save_export_path(out)
         sel = self.selection_for_export()
 
         def _go():
             import Unity_MayaToUnity as pkg
-            out = pkg._pick_output_dir()
-            if not out:
-                return
             # 空列表表示勾了仅选中但没选东西
             if sel is not None and len(sel) == 0:
                 cmds.warning(i18n.tr("ui_warn_no_sel"))
@@ -703,6 +834,30 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def _on_debug(self, checked):
         debug.set_debug(bool(checked))
+
+    def _on_texdrop(self, checked):
+        try:
+            import texture_drop
+            texture_drop.set_enabled(bool(checked))
+        except Exception as exc:
+            cmds.warning(
+                "Unity_MayaToUnity: texture drop toggle failed: %s" % exc)
+
+    def _on_tex_siblings(self, checked):
+        try:
+            import texture_drop
+            texture_drop.set_auto_siblings(bool(checked))
+        except Exception as exc:
+            cmds.warning(
+                "Unity_MayaToUnity: auto-siblings toggle failed: %s" % exc)
+
+    def _on_tex_rules(self):
+        try:
+            import texture_drop
+            texture_drop.show_suffix_rules_dialog(parent=self)
+        except Exception as exc:
+            cmds.warning(
+                "Unity_MayaToUnity: suffix rules dialog failed: %s" % exc)
 
     def _set_lang(self, code):
         i18n.set_lang(code, rebuild_menu=False)

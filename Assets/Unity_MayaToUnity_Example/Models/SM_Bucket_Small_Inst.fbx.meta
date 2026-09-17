@@ -9,7 +9,12 @@ ModelImporter:
     3300000: //RootNode
     4300000: SM_Bucket_Small_Inst
     4300002: SM_Bucket_Small_Inst
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MI_Barn_SmallProps_2
+    second: {fileID: 2100000, guid: deb04cb088f12177863894479e4b8dc5, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

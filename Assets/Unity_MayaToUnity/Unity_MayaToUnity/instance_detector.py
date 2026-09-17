@@ -78,14 +78,21 @@ def collect_mesh_transforms(selection=None):
     return result
 
 
-def _shape_identity(transform):
-    """同一 Maya Instance 共享同一 shape 节点身份（用 UUID，不用 DAG 路径）。"""
+def _mesh_shape(transform):
+    """返回 transform 下第一个非 intermediate mesh shape（long name）。"""
     shapes = cmds.listRelatives(
         transform, shapes=True, noIntermediate=True) or []
-    mesh_shapes = [s for s in shapes if cmds.nodeType(s) == 'mesh']
-    if not mesh_shapes:
+    for s in shapes:
+        if cmds.nodeType(s) == 'mesh':
+            return _long(s)
+    return None
+
+
+def _shape_identity(transform):
+    """同一 Maya Instance 共享同一 shape 节点身份（用 UUID，不用 DAG 路径）。"""
+    sh = _mesh_shape(transform)
+    if not sh:
         return None
-    sh = mesh_shapes[0]
     try:
         uuids = cmds.ls(sh, uuid=True) or []
         if uuids:
@@ -134,8 +141,11 @@ def analyze(selection=None):
             base = _pick_base(members)
             leaf = _short(base)
             prefab = strip_trailing_digits(leaf) + INSTANCE_BASE_SUFFIX
+            # InstanceGroup.shape 必须是真实 mesh shape 路径，供材质映射；
+            # 身份键 key（uuid:...）只用于分组，不能写进 shape。
+            shape_node = _mesh_shape(base)
             groups.append(InstanceGroup(
-                key, base, members, prefab, kind="instance",
+                shape_node, base, members, prefab, kind="instance",
             ))
         else:
             singletons.append(members[0])

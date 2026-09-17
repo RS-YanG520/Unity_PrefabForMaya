@@ -25,6 +25,7 @@ import maya.cmds as cmds
 from exporter import export
 import debug
 import material_convert
+import texture_drop
 from constants import to_maya_ui
 import i18n
 import ui as toolbox_ui
@@ -120,12 +121,21 @@ def install_menu():
 
 def show_toolbox(force_recreate=False):
     """显示 / 前置工具窗口。"""
+    try:
+        texture_drop.install()
+    except Exception:
+        pass
     return toolbox_ui.show_toolbox(force_recreate=force_recreate)
 
 
 def set_debug(enabled):
     """开启 / 关闭调试日志（控制台实时打印）。"""
     debug.set_debug(enabled)
+
+
+def set_texture_drop(enabled):
+    """开启 / 关闭属性编辑器外部贴图拖放。"""
+    texture_drop.set_enabled(enabled)
 
 
 def reload_modules():
@@ -135,6 +145,10 @@ def reload_modules():
     否则会触发 Parent module not found 警告。
     """
     import sys
+    try:
+        texture_drop.uninstall()
+    except Exception:
+        pass
     doomed = []
     for k, mod in list(sys.modules.items()):
         if k == "Unity_MayaToUnity":
@@ -145,7 +159,7 @@ def reload_modules():
         if k in (
             "exporter", "coords", "constants", "debug",
             "instance_detector", "material_mapper", "yaml_writer", "hierarchy",
-            "material_convert", "i18n", "ui",
+            "material_convert", "texture_drop", "i18n", "ui",
         ):
             path = getattr(mod, "__file__", "") or ""
             if "Unity_MayaToUnity" in path.replace("\\", "/"):
