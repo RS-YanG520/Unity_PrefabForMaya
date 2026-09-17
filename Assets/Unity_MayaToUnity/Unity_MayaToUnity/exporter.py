@@ -19,10 +19,11 @@ import maya.cmds as cmds
 import maya.mel as mel
 
 from constants import guid_from_string, to_maya_ui
-from coords import transform_to_unity_local
+from coords import transform_to_unity_local, transform_to_unity_local_light
 from instance_detector import analyze
-from hierarchy import build_hierarchy
+from hierarchy import build_hierarchy, merge_lights_into_hierarchy
 from material_mapper import collect_materials
+from light_mapper import map_lights, ambient_color_from
 import yaml_writer
 import debug
 
@@ -611,7 +612,16 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             ordered_meshes.append(p)
 
     hierarchy = build_hierarchy(ordered_meshes)
-    debug.log("Hierarchy nodes: %d (groups+meshes)" % len(hierarchy))
+    scene_lights, ambients = map_lights(selection)
+    light_by_path = dict((L["path"], L) for L in scene_lights)
+    if scene_lights:
+        hierarchy = merge_lights_into_hierarchy(
+            hierarchy, [L["path"] for L in scene_lights])
+    debug.log("Hierarchy nodes: %d (groups+meshes+lights)" % len(hierarchy))
+    debug.log(
+        "Lights: %d scene + %d ambient"
+        % (len(scene_lights), len(ambients))
+    )
     for hn in hierarchy:
         debug.log("  [%s] %s parent=%s children=%s" % (
             hn.kind, hn.name, hn.parent_path, [c.split('|')[-1] for c in hn.children]))
@@ -740,14 +750,19 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         for member in g.members:
             prefab_guid_by_transform[_long_name(member)] = base_guid
 
-    # 7. 场景：保留组嵌套，本地 TRS 相对父节点
-    # fileID：空组 GO 5000+ / Transform 5000000+；PrefabInstance 1000+ / stripped 1000000+
+    # 7. 场景：保留组嵌套，本地 TRS 相对父节点；灯光写成 Light GameObject
+    # fileID：空组 GO 5000+ / Transform 5000000+；
+    #         PrefabInstance 1000+ / stripped 1000000+；
+    #         灯光 GO 3000+ / Light 300000+ / Transform 310000+
     go_id = 5000
     group_tr_id = 5000000
     instance_id = 1000
     mesh_tr_id = 1000000
+    light_go_id = 3000
+    light_comp_id = 300000
+    light_tr_id = 310000
 
-    # path -> {kind, tr_id, go_id/instance_id, root_order}
+    # path -> {kind, tr_id, go_id/instance_id/light_id, root_order, props?}
     id_map = {}
     # 先算每个节点在兄弟中的 root_order（场景根从 2 起，避开相机/灯）
     root_order_of = {}
@@ -770,6 +785,18 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             }
             go_id += 1
             group_tr_id += 1
+        elif hn.kind == 'light':
+            id_map[hn.path] = {
+                'kind': 'light',
+                'go_id': light_go_id,
+                'light_id': light_comp_id,
+                'tr_id': light_tr_id,
+                'root_order': root_order_of.get(hn.path, 0),
+                'props': light_by_path.get(hn.path),
+            }
+            light_go_id += 1
+            light_comp_id += 1
+            light_tr_id += 1
         else:
             id_map[hn.path] = {
                 'kind': 'mesh',
@@ -781,7 +808,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             mesh_tr_id += 1
 
     blocks = []
-    # 先写空组（父先于子已由 hierarchy 排序保证）
+    # 先写空组（父先于子已由 hierarchy 排序保证）；灯光节点不当空组写
     for hn in hierarchy:
         if hn.kind != 'group':
             continue
@@ -799,6 +826,37 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             info['go_id'], info['tr_id'], hn.name, parent_tr,
             pos, rot, scale, child_trs, info['root_order'],
         ))
+
+    # 灯光 GameObject
+    sun_light_id = 0
+    for hn in hierarchy:
+        if hn.kind != 'light':
+            continue
+        info = id_map[hn.path]
+        props = info.get('props') or light_by_path.get(hn.path)
+        if not props:
+            cmds.warning(to_maya_ui(
+                "Unity_MayaToUnity: missing light props for %s, skip." % hn.path
+            ))
+            continue
+        parent_tr = 0
+        if hn.parent_path and hn.parent_path in id_map:
+            parent_tr = id_map[hn.parent_path]['tr_id']
+        pos, rot, scale = transform_to_unity_local_light(hn.path, hn.parent_path)
+        child_trs = []
+        for cp in hn.children:
+            if cp in id_map:
+                child_trs.append(id_map[cp]['tr_id'])
+        debug.log(
+            "Light %s type=%s intensity=%s parent_tr=%s"
+            % (hn.name, props.get("maya_type"), props.get("intensity"), parent_tr)
+        )
+        blocks.append(yaml_writer.light_gameobject_block(
+            info['go_id'], info['light_id'], info['tr_id'], hn.name, props,
+            parent_tr, pos, rot, scale, child_trs, info['root_order'],
+        ))
+        if sun_light_id == 0 and props.get("unity_type") == 1:
+            sun_light_id = info['light_id']
 
     # 再写 PrefabInstance
     for hn in hierarchy:
@@ -831,8 +889,18 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
     debug.log("Scene hierarchy nodes written: %d" % len(hierarchy))
 
+    ambient_col = ambient_color_from(ambients)
+    disable_default = bool(scene_lights)
     scene_path = os.path.join(output_dir, scene_name + ".unity")
-    _write_text(scene_path, yaml_writer.scene_file("".join(blocks)))
+    _write_text(
+        scene_path,
+        yaml_writer.scene_file(
+            "".join(blocks),
+            disable_default_light=disable_default,
+            ambient_color=ambient_col,
+            sun_light_id=sun_light_id,
+        ),
+    )
     generated.append(scene_path)
 
     # 写诊断报告（始终写入，排查问题有据可查）

@@ -4,6 +4,7 @@
 导出到 Unity 时：
   - kind=group → 空 GameObject
   - kind=mesh  → PrefabInstance
+  - kind=light → Light GameObject（由 merge_lights_into_hierarchy 并入）
 层级只写在 .unity 场景里，不打进 Prefab。
 """
 from __future__ import print_function
@@ -18,7 +19,7 @@ class HierarchyNode(object):
 
     def __init__(self, path, kind, parent_path, name, depth):
         self.path = path                # Maya fullPath
-        self.kind = kind                # 'group' | 'mesh'
+        self.kind = kind                # 'group' | 'mesh' | 'light'
         self.parent_path = parent_path  # 父 fullPath，根为 None
         self.name = name                # 短名
         self.depth = depth              # 深度（根=0）
@@ -140,3 +141,70 @@ def build_hierarchy(mesh_transforms):
             nodes[n.parent_path].children.append(n.path)
 
     return ordered
+
+
+def merge_lights_into_hierarchy(hierarchy, light_paths):
+    """把灯光 transform 并入层级。
+
+    - 已是 group 的灯光节点 → kind 改为 light（避免空 GO + Light 双份）
+    - 不在层级中的灯光 → 挂到最近已导出祖先（或场景根）
+
+    light_paths：灯光 transform 的 long path 列表。
+    返回新的有序 HierarchyNode 列表。
+    """
+    from light_mapper import is_light_transform
+
+    hierarchy = list(hierarchy or [])
+    by_path = dict((n.path, n) for n in hierarchy)
+
+    # 已在层级中：group → light
+    for path in light_paths or []:
+        path = _to_long(path)
+        if path in by_path and by_path[path].kind == "group":
+            by_path[path].kind = "light"
+
+    # 不在层级中的灯光
+    for path in light_paths or []:
+        path = _to_long(path)
+        if not cmds.objExists(path):
+            continue
+        if not is_light_transform(path):
+            continue
+        if path in by_path:
+            continue
+
+        # 向上找已导出祖先
+        parent = None
+        cur = _parent_path(path)
+        while cur:
+            if cur in by_path:
+                parent = cur
+                break
+            cur = _parent_path(cur)
+
+        depth = by_path[parent].depth + 1 if parent else 0
+        node = HierarchyNode(
+            path=path,
+            kind="light",
+            parent_path=parent,
+            name=path.split("|")[-1],
+            depth=depth,
+        )
+        by_path[path] = node
+        hierarchy.append(node)
+        if parent and parent in by_path:
+            if path not in by_path[parent].children:
+                by_path[parent].children.append(path)
+
+    # 重建 children / 排序
+    for n in by_path.values():
+        n.children = []
+    ordered = sorted(by_path.values(), key=lambda n: (n.depth, n.path))
+    for n in ordered:
+        if n.parent_path and n.parent_path in by_path:
+            by_path[n.parent_path].children.append(n.path)
+            n.depth = by_path[n.parent_path].depth + 1
+        else:
+            n.parent_path = None
+            n.depth = 0
+    return sorted(by_path.values(), key=lambda n: (n.depth, n.path))

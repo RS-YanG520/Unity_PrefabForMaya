@@ -8,6 +8,7 @@
 - **实例 → Prefab**：每组只导出一个网格（FBX），生成一个 Prefab，其余实例在场景里以该 Prefab 的实例形式、按各自世界变换摆放。
 - **唯一网格**：不参与实例化的唯一网格也各导出为一个 Prefab。
 - **材质 / 贴图**：读取 Maya 主颜色（baseColor / color）、主贴图、metalness 贴图、法线贴图；**同一 mesh 多材质按面集导出为多个 Materials 槽**。
+- **灯光**：识别 Maya 内置 `directionalLight` / `spotLight` / `pointLight` / `ambientLight`，写入场景 `.unity` 为带 `Light` 组件的 GameObject（ambient 写入 RenderSettings）；有场景灯时关闭模板默认平行光。
 - **材质转 PBR**：工具窗口可将非 `standardSurface` / Arnold 材质一键换成 PBR（保留原名，源材质备份为 `*_mtu_src`），并可一键还原。
 - **导出范围可选**：选中对象时只导出选中；不选时导出整个场景。
 
@@ -34,6 +35,7 @@ Unity_MayaToUnity/
   coords.py             # Maya→Unity 坐标转换
   instance_detector.py  # 实例识别
   material_mapper.py    # 材质/贴图映射
+  light_mapper.py       # Maya 内置灯光 → Unity Light
   exporter.py           # 导出主流程
   yaml_writer.py        # 手写 Unity YAML
 ```
@@ -106,9 +108,10 @@ Unity_MayaToUnity.export(
 - 只处理静态 mesh，不含骨骼 / 蒙皮 / 动画。
 - 材质只映射主颜色 + 主贴图 + metallic / 法线；复杂 shading network（程序纹理、混合节点）需要先烘焙。
 - 贴图按引用复制，不处理 UV 平铺/偏移与颜色校正节点。
-- 场景生成的是基础摄像机 + 平行光 + Prefab 实例；Maya 里的灯光 / 相机不导出。
+- 灯光仅内置 directional / spot / point / ambient；不含 area / Arnold。点光/聚光 `m_Range` 默认 10m，强度按 Maya `intensity` 近似，不做物理单位换算。
+- 场景仍带模板主相机；有 Maya 场景灯时模板 Directional Light 会禁用。
 - 场景保留组嵌套（空组→空 GameObject）；Prefab 资产本身仍是单网格，不含内部层级。
 
 ## 阶段进度（摘要）
 
-第一版主路径已打通：实例识别 → 对象空间 FBX → Prefab / 多材质槽 / 带层级的场景 YAML，坐标已对齐。后续重点为复杂材质与 UV，见 `可行性分析.md` §6。
+第一版主路径已打通：实例识别 → 对象空间 FBX → Prefab / 多材质槽 / 带层级与灯光的场景 YAML，坐标已对齐。后续重点为复杂材质与 UV，见 `可行性分析.md` §6。

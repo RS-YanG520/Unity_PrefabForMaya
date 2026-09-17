@@ -11,6 +11,8 @@ fileID 采用固定约定（见 constants.py），GUID 用确定性 md5。
 """
 from __future__ import print_function
 
+import re
+
 from constants import (
     FILEID_ROOT_GAMEOBJECT, FILEID_ROOT_TRANSFORM, FILEID_MESH_RENDERER,
     FILEID_MESH_FILTER, FILEID_MESH, FILEID_MATERIAL, FILEID_TEXTURE,
@@ -796,8 +798,193 @@ Transform:
 """
 
 
-def scene_header():
-    return SCENE_HEADER
+def scene_header(disable_default_light=False, ambient_color=None, sun_light_id=0):
+    """场景头：可选关闭模板平行光、写入 ambient、绑定 m_Sun。"""
+    text = SCENE_HEADER
+    if disable_default_light:
+        text = text.replace(
+            "  m_Name: Directional Light\n"
+            "  m_TagString: Untagged\n"
+            "  m_Icon: {fileID: 0}\n"
+            "  m_NavMeshLayer: 0\n"
+            "  m_StaticEditorFlags: 0\n"
+            "  m_IsActive: 1\n",
+            "  m_Name: Directional Light\n"
+            "  m_TagString: Untagged\n"
+            "  m_Icon: {fileID: 0}\n"
+            "  m_NavMeshLayer: 0\n"
+            "  m_StaticEditorFlags: 0\n"
+            "  m_IsActive: 0\n",
+            1,
+        )
+    if ambient_color is not None:
+        r, g, b = ambient_color[0], ambient_color[1], ambient_color[2]
+        sky = "m_AmbientSkyColor: {r: %s, g: %s, b: %s, a: 1}" % (
+            _f(r), _f(g), _f(b),
+        )
+        # 同步 equator/ground，避免 Flat 以外模式看起来怪
+        eq = "m_AmbientEquatorColor: {r: %s, g: %s, b: %s, a: 1}" % (
+            _f(r), _f(g), _f(b),
+        )
+        gr = "m_AmbientGroundColor: {r: %s, g: %s, b: %s, a: 1}" % (
+            _f(r * 0.5), _f(g * 0.5), _f(b * 0.5),
+        )
+        text = re.sub(
+            r"m_AmbientSkyColor: \{[^}]+\}", sky, text, count=1)
+        text = re.sub(
+            r"m_AmbientEquatorColor: \{[^}]+\}", eq, text, count=1)
+        text = re.sub(
+            r"m_AmbientGroundColor: \{[^}]+\}", gr, text, count=1)
+        text = text.replace("m_AmbientMode: 0", "m_AmbientMode: 3", 1)
+    if sun_light_id:
+        text = text.replace(
+            "m_Sun: {fileID: 0}",
+            "m_Sun: {fileID: %d}" % int(sun_light_id),
+            1,
+        )
+    return text
+
+
+def light_gameobject_block(
+    go_id, light_id, tr_id, name, light_props,
+    parent_tr_id, position, rotation, scale,
+    children_tr_ids, root_order,
+):
+    """生成场景里的灯光 GameObject + Light + Transform。
+
+    light_props：需含 unity_type / color / intensity / range /
+    spot_angle / inner_spot / shadows / enabled。
+    """
+    px, py, pz = position
+    qx, qy, qz, qw = rotation
+    sx, sy, sz = scale
+
+    unity_type = int(light_props.get("unity_type") if light_props.get("unity_type") is not None else 1)
+    color = light_props.get("color") or (1.0, 1.0, 1.0)
+    cr, cg, cb = float(color[0]), float(color[1]), float(color[2])
+    intensity = float(light_props.get("intensity") or 1.0)
+    rng = float(light_props.get("range") or 10.0)
+    spot_angle = float(light_props.get("spot_angle") or 30.0)
+    inner_spot = float(light_props.get("inner_spot") or 21.80208)
+    shadows = int(light_props.get("shadows") or 0)
+    enabled = 1 if light_props.get("enabled", True) else 0
+
+    if children_tr_ids:
+        children_lines = "\n".join(
+            "  - {fileID: %d}" % cid for cid in children_tr_ids
+        )
+        children_block = "  m_Children:\n%s\n" % children_lines
+    else:
+        children_block = "  m_Children: []\n"
+
+    return (
+        "--- !u!1 &%d\n"
+        "GameObject:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  serializedVersion: 6\n"
+        "  m_Component:\n"
+        "  - component: {fileID: %d}\n"
+        "  - component: {fileID: %d}\n"
+        "  m_Layer: 0\n"
+        "  m_Name: %s\n"
+        "  m_TagString: Untagged\n"
+        "  m_Icon: {fileID: 0}\n"
+        "  m_NavMeshLayer: 0\n"
+        "  m_StaticEditorFlags: 0\n"
+        "  m_IsActive: 1\n"
+        "--- !u!108 &%d\n"
+        "Light:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  m_GameObject: {fileID: %d}\n"
+        "  m_Enabled: %d\n"
+        "  serializedVersion: 10\n"
+        "  m_Type: %d\n"
+        "  m_Shape: 0\n"
+        "  m_Color: {r: %s, g: %s, b: %s, a: 1}\n"
+        "  m_Intensity: %s\n"
+        "  m_Range: %s\n"
+        "  m_SpotAngle: %s\n"
+        "  m_InnerSpotAngle: %s\n"
+        "  m_CookieSize: 10\n"
+        "  m_Shadows:\n"
+        "    m_Type: %d\n"
+        "    m_Resolution: -1\n"
+        "    m_CustomResolution: -1\n"
+        "    m_Strength: 1\n"
+        "    m_Bias: 0.05\n"
+        "    m_NormalBias: 0.4\n"
+        "    m_NearPlane: 0.2\n"
+        "    m_CullingMatrixOverride:\n"
+        "      e00: 1\n"
+        "      e01: 0\n"
+        "      e02: 0\n"
+        "      e03: 0\n"
+        "      e10: 0\n"
+        "      e11: 1\n"
+        "      e12: 0\n"
+        "      e13: 0\n"
+        "      e20: 0\n"
+        "      e21: 0\n"
+        "      e22: 1\n"
+        "      e23: 0\n"
+        "      e30: 0\n"
+        "      e31: 0\n"
+        "      e32: 0\n"
+        "      e33: 1\n"
+        "    m_UseCullingMatrixOverride: 0\n"
+        "  m_Cookie: {fileID: 0}\n"
+        "  m_DrawHalo: 0\n"
+        "  m_Flare: {fileID: 0}\n"
+        "  m_RenderMode: 0\n"
+        "  m_CullingMask:\n"
+        "    serializedVersion: 2\n"
+        "    m_Bits: 4294967295\n"
+        "  m_RenderingLayerMask: 1\n"
+        "  m_Lightmapping: 4\n"
+        "  m_LightShadowCasterMode: 0\n"
+        "  m_AreaSize: {x: 1, y: 1}\n"
+        "  m_BounceIntensity: 1\n"
+        "  m_ColorTemperature: 6570\n"
+        "  m_UseColorTemperature: 0\n"
+        "  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}\n"
+        "  m_UseBoundingSphereOverride: 0\n"
+        "  m_UseViewFrustumForShadowCasterCull: 1\n"
+        "  m_ShadowRadius: 0\n"
+        "  m_ShadowAngle: 0\n"
+        "--- !u!4 &%d\n"
+        "Transform:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  m_GameObject: {fileID: %d}\n"
+        "  m_LocalRotation: {x: %s, y: %s, z: %s, w: %s}\n"
+        "  m_LocalPosition: {x: %s, y: %s, z: %s}\n"
+        "  m_LocalScale: {x: %s, y: %s, z: %s}\n"
+        "  m_ConstrainProportionsScale: 0\n"
+        "%s"
+        "  m_Father: {fileID: %d}\n"
+        "  m_RootOrder: %d\n"
+        "  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}\n"
+    ) % (
+        go_id, tr_id, light_id, name,
+        light_id, go_id, enabled, unity_type,
+        _f(cr), _f(cg), _f(cb),
+        _f(intensity), _f(rng), _f(spot_angle), _f(inner_spot),
+        shadows,
+        tr_id, go_id,
+        _f(qx), _f(qy), _f(qz), _f(qw),
+        _f(px), _f(py), _f(pz),
+        _f(sx), _f(sy), _f(sz),
+        children_block,
+        parent_tr_id, root_order,
+    )
 
 
 def empty_gameobject_block(
@@ -915,6 +1102,15 @@ def prefab_instance_block(
     )
 
 
-def scene_file(body_blocks):
-    """组装完整场景文件：场景模板 + 空组 / PrefabInstance 等块。"""
-    return SCENE_HEADER + body_blocks
+def scene_file(
+    body_blocks,
+    disable_default_light=False,
+    ambient_color=None,
+    sun_light_id=0,
+):
+    """组装完整场景文件：场景模板 + 空组 / 灯光 / PrefabInstance 等块。"""
+    return scene_header(
+        disable_default_light=disable_default_light,
+        ambient_color=ambient_color,
+        sun_light_id=sun_light_id,
+    ) + body_blocks

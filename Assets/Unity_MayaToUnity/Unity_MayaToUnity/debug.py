@@ -114,10 +114,39 @@ def _estimate_export_bytes(faces, verts):
     return int(verts * 32 + faces * 16 + 8192)
 
 
+def _mesh_uv_set_names(transform):
+    """返回 mesh 的 UV Set 名称列表（顺序即 UV0、UV1…）。"""
+    shapes = cmds.listRelatives(
+        transform, shapes=True, noIntermediate=True, fullPath=True) or []
+    for sh in shapes:
+        if cmds.nodeType(sh) != "mesh":
+            continue
+        try:
+            names = cmds.polyUVSet(sh, query=True, allUVSets=True) or []
+        except Exception:
+            names = []
+        # 部分版本返回扁平列表；去空、保序
+        out = []
+        for n in names:
+            if not n:
+                continue
+            # 偶发成对出现 (name, name)
+            if isinstance(n, (list, tuple)):
+                n = n[0] if n else ""
+            n = str(n).strip()
+            if n and n not in out:
+                out.append(n)
+        return out
+    return []
+
+
 def _collect_mesh_row(transform, kind, prefab_name=None):
     faces, verts, shapes = _mesh_geo_stats(transform)
     export_bytes = _estimate_export_bytes(faces, verts)
     shape_key = shapes[0] if shapes else ""
+    uv_sets = _mesh_uv_set_names(transform)
+    uv0 = uv_sets[0] if len(uv_sets) > 0 else ""
+    uv1 = uv_sets[1] if len(uv_sets) > 1 else ""
     return {
         "name": _short_name(transform),
         "path": transform,
@@ -128,6 +157,9 @@ def _collect_mesh_row(transform, kind, prefab_name=None):
         "export_bytes": export_bytes,
         "size": _fmt_bytes(export_bytes),
         "shape": shape_key,
+        "uv_sets": uv_sets,
+        "uv0": uv0,
+        "uv1": uv1,
     }
 
 
@@ -142,9 +174,12 @@ def diagnose_scene(selection=None):
     from instance_detector import analyze
     from material_mapper import collect_materials
     from coords import transform_to_unity
+    from light_mapper import map_lights, ambient_color_from
 
     groups, singletons = analyze(selection)
     materials, textures = collect_materials()
+    scene_lights, ambients = map_lights(selection)
+    ambient_col = ambient_color_from(ambients)
 
     meshes = []
     for g in groups:
@@ -197,6 +232,8 @@ def diagnose_scene(selection=None):
         "total_export_size": _fmt_bytes(total_export_bytes),
         "instance_groups": len(groups),
         "singletons": len(singletons),
+        "light_count": len(scene_lights),
+        "ambient_count": len(ambients),
     }
 
     lines = []
@@ -212,25 +249,32 @@ def diagnose_scene(selection=None):
         )
     )
     lines.append(
-        "Instance groups: %d  |  Singletons: %d"
-        % (summary["instance_groups"], summary["singletons"])
+        "Instance groups: %d  |  Singletons: %d  |  Lights: %d  |  Ambient: %d"
+        % (
+            summary["instance_groups"],
+            summary["singletons"],
+            summary["light_count"],
+            summary["ambient_count"],
+        )
     )
     lines.append("")
     lines.append("---- Mesh List ----")
     lines.append(
-        "%-20s %6s %4s %10s %s"
-        % ("Name", "Faces", "Inst", "Est.Size", "Base")
+        "%-18s %6s %4s %10s %-16s %-12s %s"
+        % ("Name", "Faces", "Inst", "Est.Size", "Base", "UV0", "UV1")
     )
     for row in meshes:
         inst = "yes" if row.get("kind") == "instance" else "no"
         lines.append(
-            "%-20s %6d %4s %10s %s"
+            "%-18s %6d %4s %10s %-16s %-12s %s"
             % (
-                (row["name"] or "")[:20],
+                (row["name"] or "")[:18],
                 row["faces"],
                 inst,
                 row["size"],
-                row.get("base_name") or "-",
+                (row.get("base_name") or "-")[:16],
+                (row.get("uv0") or "-")[:12],
+                row.get("uv1") or "-",
             )
         )
 
@@ -288,6 +332,42 @@ def diagnose_scene(selection=None):
     for t in textures:
         lines.append("  - %s -> %s" % (t.name, t.src_path))
 
+    lines.append("Lights: %d" % len(scene_lights))
+    _unity_names = {0: "Spot", 1: "Directional", 2: "Point"}
+    for L in scene_lights:
+        pos, rot, scale = transform_to_unity(L["path"])
+        ut = _unity_names.get(L.get("unity_type"), "?")
+        c = L.get("color") or (1, 1, 1)
+        lines.append(
+            "  - %s  maya=%s -> Unity %s  intensity=%s  color=(%.3f,%.3f,%.3f)"
+            "  shadows=%s"
+            % (
+                L.get("name"),
+                L.get("maya_type"),
+                ut,
+                L.get("intensity"),
+                c[0], c[1], c[2],
+                L.get("shadows"),
+            )
+        )
+        lines.append(
+            "      pos=%s  rot=%s  scale=%s"
+            % (_fmt_vec3(pos), _fmt_quat(rot), _fmt_vec3(scale))
+        )
+    if ambients:
+        lines.append("Ambient lights: %d" % len(ambients))
+        for a in ambients:
+            c = a.get("color") or (1, 1, 1)
+            lines.append(
+                "  - %s  intensity=%s  color=(%.3f,%.3f,%.3f)"
+                % (a.get("name"), a.get("intensity"), c[0], c[1], c[2])
+            )
+        if ambient_col:
+            lines.append(
+                "  -> RenderSettings ambient ~= (%.3f, %.3f, %.3f)"
+                % (ambient_col[0], ambient_col[1], ambient_col[2])
+            )
+
     lines.append("====================================================")
 
     report = "\n".join(lines)
@@ -295,5 +375,7 @@ def diagnose_scene(selection=None):
     return {
         "summary": summary,
         "meshes": meshes,
+        "lights": scene_lights,
+        "ambients": ambients,
         "report": report,
     }

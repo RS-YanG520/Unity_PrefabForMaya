@@ -199,12 +199,16 @@ _STRINGS = {
         "zh": u"诊断信息",
     },
     "ui_diag_placeholder": {
-        "en": u"Click Diagnose to refresh summary and mesh list.",
-        "zh": u"点击「诊断」刷新汇总与模型列表。",
+        "en": u"Click Diagnose to refresh summary, meshes and lights.",
+        "zh": u"点击「诊断」刷新汇总、模型与灯光列表。",
     },
     "ui_diag_summary": {
-        "en": u"Models: %d  |  Mats: %d  |  Tex: %d  |  Faces: %d  |  Est: %s",
-        "zh": u"模型: %d  |  材质: %d  |  贴图: %d  |  面数: %d  |  预估导出: %s",
+        "en": u"Models: %d  |  Lights: %d  |  Mats: %d  |  Tex: %d  |  Faces: %d  |  Est: %s",
+        "zh": u"模型: %d  |  灯光: %d  |  材质: %d  |  贴图: %d  |  面数: %d  |  预估导出: %s",
+    },
+    "ui_diag_lights_sep": {
+        "en": u"──────── Lights ────────",
+        "zh": u"──────── 灯光 ────────",
     },
     "ui_col_name": {
         "en": u"Name",
@@ -226,6 +230,14 @@ _STRINGS = {
         "en": u"Inst Base",
         "zh": u"基础模型",
     },
+    "ui_col_uv0": {
+        "en": u"UV0",
+        "zh": u"UV0",
+    },
+    "ui_col_uv1": {
+        "en": u"UV1",
+        "zh": u"UV1",
+    },
     "ui_base_none": {
         "en": u"-",
         "zh": u"-",
@@ -245,6 +257,78 @@ _STRINGS = {
     "ui_warn_mesh_missing": {
         "en": u"Unity_MayaToUnity: mesh no longer exists in the scene.",
         "zh": u"Unity_MayaToUnity: 场景中已找不到该模型。",
+    },
+    "ui_ctx_locate": {
+        "en": u"Locate Exported File",
+        "zh": u"定位到导出文件",
+    },
+    "ui_ctx_locate_multi": {
+        "en": u"Locate Exported Files (%d)",
+        "zh": u"定位到导出文件（%d 个）",
+    },
+    "ui_ctx_rename_uv0": {
+        "en": u"Rename UV0...",
+        "zh": u"重命名 UV0...",
+    },
+    "ui_ctx_rename_uv1": {
+        "en": u"Rename UV1...",
+        "zh": u"重命名 UV1...",
+    },
+    "ui_ctx_rename_uv0_multi": {
+        "en": u"Rename UV0 (%d selected)...",
+        "zh": u"重命名 UV0（已选 %d 个）...",
+    },
+    "ui_ctx_rename_uv1_multi": {
+        "en": u"Rename UV1 (%d selected)...",
+        "zh": u"重命名 UV1（已选 %d 个）...",
+    },
+    "ui_uv_rename_title": {
+        "en": u"Rename %s",
+        "zh": u"重命名 %s",
+    },
+    "ui_uv_rename_label": {
+        "en": u"New %s name (%d mesh(es)):",
+        "zh": u"新的 %s 名称（%d 个模型）：",
+    },
+    "ui_uv_rename_ok": {
+        "en": u"Unity_MayaToUnity: renamed %s -> %s on %d mesh(es)",
+        "zh": u"Unity_MayaToUnity: 已将 %s 重命名为 %s（%d 个）",
+    },
+    "ui_warn_uv_missing": {
+        "en": u"Unity_MayaToUnity: no %s channel on the selection.",
+        "zh": u"Unity_MayaToUnity: 选中项没有 %s 通道。",
+    },
+    "ui_warn_uv_no_source": {
+        "en": u"Unity_MayaToUnity: cannot create UV1 — UV0 is missing.",
+        "zh": u"Unity_MayaToUnity: 无法创建 UV1，缺少 UV0 通道。",
+    },
+    "ui_uv_copied": {
+        "en": u"Unity_MayaToUnity: copied UV0 -> UV1 on %d mesh(es).",
+        "zh": u"Unity_MayaToUnity: 已从 UV0 复制出 UV1（%d 个）。",
+    },
+    "ui_warn_uv_empty": {
+        "en": u"Unity_MayaToUnity: UV set name cannot be empty.",
+        "zh": u"Unity_MayaToUnity: UV 通道名不能为空。",
+    },
+    "ui_warn_uv_invalid": {
+        "en": u"Unity_MayaToUnity: invalid UV set name: %s",
+        "zh": u"Unity_MayaToUnity: UV 通道名不合法：%s",
+    },
+    "ui_warn_uv_rename_partial": {
+        "en": u"Unity_MayaToUnity: UV rename finished with %d ok, %d failed.",
+        "zh": u"Unity_MayaToUnity: UV 重命名完成：成功 %d，失败 %d。",
+    },
+    "ui_locate_multi_ok": {
+        "en": u"Unity_MayaToUnity: selected %d exported file(s) in Explorer:\n%s",
+        "zh": u"Unity_MayaToUnity: 已在资源管理器中选中 %d 个导出文件：\n%s",
+    },
+    "ui_warn_export_missing": {
+        "en": u"Unity_MayaToUnity: exported file not found for '%s' under:\n%s\nExport first, then try again.",
+        "zh": u"Unity_MayaToUnity: 未找到 '%s' 的导出文件（目录：\n%s）\n请先导出后再定位。",
+    },
+    "ui_warn_export_partial": {
+        "en": u"Unity_MayaToUnity: located %d file(s); %d missing (export first).",
+        "zh": u"Unity_MayaToUnity: 已定位 %d 个文件，另有 %d 个未找到（请先导出）。",
     },
     "ui_menu_options": {
         "en": u"Options",

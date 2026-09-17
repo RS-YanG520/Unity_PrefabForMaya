@@ -171,3 +171,30 @@ def transform_to_unity_local(node, parent_path=None):
     None 表示挂在场景根，使用世界变换。
     """
     return matrix_to_unity(matrix_relative_to(node, parent_path))
+
+
+def _quat_mul(a, b):
+    """四元数乘法 a * b，均为 (x, y, z, w)。"""
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (
+        aw * bx + ax * bw + ay * bz - az * by,
+        aw * by - ax * bz + ay * bw + az * bx,
+        aw * bz + ax * by - ay * bx + az * bw,
+        aw * bw - ax * bx - ay * by - az * bz,
+    )
+
+
+# Maya 灯光沿局部 -Z 照射；Unity Light 沿局部 +Z（forward）。
+# 转换完 TRS 后再本地绕 Y 转 180°，把瞄准轴对齐。
+_LIGHT_AIM_FLIP_Y180 = (0.0, 1.0, 0.0, 0.0)
+
+
+def transform_to_unity_local_light(node, parent_path=None):
+    """灯光专用：与 mesh 相同的坐标转换，再补瞄准轴（-Z→+Z）。
+
+    缩放强制为 (1,1,1)：Maya 灯光 Scale 只影响图标大小，不影响光照。
+    """
+    pos, rot, _scale = transform_to_unity_local(node, parent_path)
+    rot = _quat_mul(rot, _LIGHT_AIM_FLIP_Y180)
+    return pos, rot, (1.0, 1.0, 1.0)
