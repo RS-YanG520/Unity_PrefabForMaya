@@ -1,0 +1,1794 @@
+{
+    "version": "2.1.0",
+    "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+    "runs": [
+        {
+            "results": [
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'UMorphTarget::GetMorphTargetDelta': Use the TConstArrayView version of GetMorphTargetDelta instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 2637,
+                                    "startColumn": 64,
+                                    "snippet": {
+                                        "text": "\t\t\t\t\tconst FMorphTargetDelta* MorphTargetDeltas = MorphTarget->GetMorphTargetDelta( LODIndex, NumberOfDeltas );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'FString::RightChopInline': RightChopInline with a boolean bAllowShrinking has been deprecated - please use the EAllowShrinking enum instead - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 2970,
+                                    "startColumn": 18,
+                                    "snippet": {
+                                        "text": "\t\t\t\t\tTagAsString.RightChopInline( CharPos + 1, false ); // exclude the period"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 3904,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, Size,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 3953,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Line, sizeof(Line), \"  - {fileID: %d, guid: %s, type: 2}\\n\", fileIDBase, MatGUID.c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 3959,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Line, sizeof(Line), \"  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 3966,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, TextLen,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4033,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Line, sizeof(Line), \"  - {fileID: %d, guid: %s, type: 2}\\n\", fileIDBase, MatGUID.c_str());"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4039,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Line, sizeof( Line ), \"  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4052,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, TextLen,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4120,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4147,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4169,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, TextSize,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4200,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4222,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4243,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4264,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4289,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4340,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4391,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4427,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4478,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4504,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4635,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4659,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - {x: %f, y: %f, z: %f}\\n\", Instance->Position.X, Instance->Position.Y, Instance->Position.Z );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4676,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - %f\\n\", Instance->widthScale );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4693,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - %f\\n\", Instance->heightScale );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4710,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - %f\\n\", Instance->rotation );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4734,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - {fileID: %lld, guid: %s, type: 3}\\n\", FileID,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4752,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - %s\\n\", Entry->GrassTexture.c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4776,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Local, sizeof( Local ), \"  - {fileID: %lld, guid: %s, type: 3}\\n\", FileID, PrefabGUID.c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4787,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ), \"  HeightMapTexture: %s\\n\", THIS->HeightMapTexture.c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 4789,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ), \"  TerrainHeight: %f\\n\", THIS->TerrainHeight );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5042,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5125,
+                                    "startColumn": 6,
+                                    "snippet": {
+                                        "text": "\tf = fopen( File, \"w\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5176,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5192,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5232,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, TextLength,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5249,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, TextLength,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5330,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Line, sizeof( Line ), \"    %d: %s\\n\", ID, Identifier.c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5340,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ), \"    %d: %s_LOD%i\\n\", ID, MeshName, i );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5352,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ), \"    %d: %s\\n\", ID, M->Materials[i]->Name.c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5365,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ), \"    %d: %s\\n\", ID, M->BoneNames[i].c_str() );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5391,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Text, TextSize, \"    100000: //RootNode\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5395,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Text, TextSize, \"    400000: //RootNode\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5405,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, TextSize, \"    %d: %s_ConvexHulls\\n\", M->ConvexHullMeshID, MeshName );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5408,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Text, TextSize, \"    20500000: //RootNode\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5423,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Text, TextSize,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5438,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, TextSize, \"    %d: %s_ConvexHulls\\n\", M->ConvexHullMeshID, MeshName );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5453,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5467,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, TextLength,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5521,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, TextLength,"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5613,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5644,
+                                    "startColumn": 7,
+                                    "snippet": {
+                                        "text": "\t\tf = fopen( File.c_str(), \"w\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5656,
+                                    "startColumn": 7,
+                                    "snippet": {
+                                        "text": "\t\tf = fopen( MetaFile.c_str(), \"w\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5752,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tstrcat( ExtraKeywords, \"  - _SURFACE_TYPE_TRANSPARENT\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5755,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5849,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, sizeof( Text ), \"    - %s:\\n\", SemanticNames [i] );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5854,
+                                    "startColumn": 6,
+                                    "snippet": {
+                                        "text": "\t\t\t\t\tsnprintf( Text, sizeof( Text ), \"        m_Texture: {fileID: 2800000, guid: %s, type: 3}\\n\","
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5858,
+                                    "startColumn": 6,
+                                    "snippet": {
+                                        "text": "\t\t\t\t\tsnprintf( Text, sizeof( Text ), \"        m_Texture: {fileID: 0}\\n\" );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5861,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5869,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5904,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5950,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5964,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5968,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5976,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5983,
+                                    "startColumn": 4,
+                                    "snippet": {
+                                        "text": "\t\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5991,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 5998,
+                                    "startColumn": 3,
+                                    "snippet": {
+                                        "text": "\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 6008,
+                                    "startColumn": 5,
+                                    "snippet": {
+                                        "text": "\t\t\t\tsnprintf( Text, sizeof( Text ),"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "ruleId": "C4996",
+                    "message": {
+                        "text": "'_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details."
+                    },
+                    "analysisTarget": {
+                        "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///C:/UnrealProjects/Test5_7/Plugins/UnrealToUnity/Source/UnrealToUnity/Public/UnityScene.cpp"
+                                },
+                                "region": {
+                                    "startLine": 6026,
+                                    "startColumn": 2,
+                                    "snippet": {
+                                        "text": "\tsnprintf( Num, sizeof( Num ), \"%zu\", Input64 );"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ],
+            "tool": {
+                "driver": {
+                    "name": "MSVC",
+                    "shortDescription": {
+                        "text": "Microsoft Visual C++ Compiler Warnings/Errors"
+                    },
+                    "informationUri": "https://docs.microsoft.com/cpp/error-messages/compiler-errors-1/c-cpp-build-errors"
+                }
+            }
+        }
+    ]
+}
