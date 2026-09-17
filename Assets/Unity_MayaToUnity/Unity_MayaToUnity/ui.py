@@ -266,7 +266,9 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.tbl_meshes.setColumnWidth(6, 64)
         self._mesh_rows = []
         self._light_rows = []
+        self._camera_rows = []
         self._bulb_icon = None
+        self._cam_icon = None
         self._sort_col = 0
         self._sort_asc = True
         self.tbl_meshes.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -633,11 +635,12 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self._defer(_go)
 
     def set_diagnose_result(self, result):
-        """刷新底部汇总与模型/灯光列表。"""
+        """刷新底部汇总与模型/灯光/摄影机列表。"""
         if not isinstance(result, dict):
             self.lbl_diag_summary.setText(i18n.tr("ui_diag_placeholder"))
             self._mesh_rows = []
             self._light_rows = []
+            self._camera_rows = []
             self.tbl_meshes.setRowCount(0)
             return
 
@@ -645,11 +648,14 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self._mesh_rows = list(result.get("meshes") or [])
         self._light_rows = self._normalize_light_rows(
             result.get("lights") or [])
+        self._camera_rows = self._normalize_camera_rows(
+            result.get("cameras") or [])
         self.lbl_diag_summary.setText(
             i18n.tr(
                 "ui_diag_summary",
                 int(summary.get("model_count", 0)),
                 int(summary.get("light_count", len(self._light_rows))),
+                int(summary.get("camera_count", len(self._camera_rows))),
                 int(summary.get("material_count", 0)),
                 int(summary.get("texture_count", 0)),
                 int(summary.get("total_faces", 0)),
@@ -692,6 +698,33 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             })
         return out
 
+    def _normalize_camera_rows(self, cameras):
+        """诊断摄影机 → 表格行数据。"""
+        out = []
+        for C in cameras or []:
+            if not C:
+                continue
+            proj = "Ortho" if C.get("orthographic") else "Persp"
+            out.append({
+                "kind": "camera",
+                "name": C.get("name") or "",
+                "path": C.get("path") or "",
+                "maya_type": "camera",
+                "fov": C.get("fov"),
+                "near": C.get("near"),
+                "far": C.get("far"),
+                "orthographic": C.get("orthographic"),
+                "faces": 0,
+                "size": "-",
+                "base_name": proj,
+                "uv0": "-",
+                "uv1": "-",
+                "uv_sets": [],
+                "shared": False,
+                "member_paths": [C.get("path") or ""],
+            })
+        return out
+
     def _light_bulb_icon(self):
         """画一个小灯泡图标（不依赖系统 emoji 字体）。"""
         if self._bulb_icon is not None:
@@ -716,17 +749,51 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self._bulb_icon = QtGui.QIcon()
         return self._bulb_icon
 
+    def _camera_icon(self):
+        """画一个小摄影机图标。"""
+        if self._cam_icon is not None:
+            return self._cam_icon
+        try:
+            pm = QtGui.QPixmap(14, 14)
+            pm.fill(QtCore.Qt.transparent)
+            p = QtGui.QPainter(pm)
+            p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+            p.setBrush(QtGui.QColor("#6ec1e0"))
+            p.setPen(QtGui.QPen(QtGui.QColor("#3a8fb0"), 1))
+            p.drawRoundedRect(1, 4, 8, 6, 1, 1)
+            # 镜头
+            p.setBrush(QtGui.QColor("#d0eef8"))
+            p.drawEllipse(7, 3, 6, 6)
+            p.end()
+            self._cam_icon = QtGui.QIcon(pm)
+        except Exception:
+            self._cam_icon = QtGui.QIcon()
+        return self._cam_icon
+
     def _table_entries(self):
-        """表格显示顺序：模型 →（分隔条）→ 灯光。"""
+        """表格显示顺序：模型 →（分隔）→ 灯光 →（分隔）→ 摄影机。"""
         entries = []
         meshes = self._mesh_rows or []
         lights = self._light_rows or []
+        cameras = self._camera_rows or []
         for r in meshes:
             entries.append(r)
-        if meshes and lights:
-            entries.append({"kind": "separator"})
-        for r in lights:
-            entries.append(r)
+        if lights:
+            if meshes:
+                entries.append({
+                    "kind": "separator",
+                    "label_key": "ui_diag_lights_sep",
+                })
+            for r in lights:
+                entries.append(r)
+        if cameras:
+            if meshes or lights:
+                entries.append({
+                    "kind": "separator",
+                    "label_key": "ui_diag_cameras_sep",
+                })
+            for r in cameras:
+                entries.append(r)
         return entries
 
     def _entry_at_table_row(self, row):
@@ -768,9 +835,14 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self._mesh_rows.sort(key=_key, reverse=not asc)
         except Exception:
             pass
-        # 灯光按名称稳定排序
+        # 灯光 / 摄影机按名称稳定排序
         try:
             self._light_rows.sort(
+                key=lambda r: (r.get("name") or "").lower())
+        except Exception:
+            pass
+        try:
+            self._camera_rows.sort(
                 key=lambda r: (r.get("name") or "").lower())
         except Exception:
             pass
@@ -807,7 +879,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
             # —— 分隔条 ——
             if kind == "separator":
-                label = i18n.tr("ui_diag_lights_sep")
+                label = i18n.tr(row.get("label_key") or "ui_diag_lights_sep")
                 for col in range(7):
                     text = label if col == 0 else u""
                     item = QtWidgets.QTableWidgetItem(text)
@@ -854,6 +926,39 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 for col, item in enumerate(items):
                     item.setToolTip(tip)
                     item.setData(QtCore.Qt.UserRole + 2, "light")
+                    self.tbl_meshes.setItem(i, col, item)
+                continue
+
+            # —— 摄影机行 ——
+            if kind == "camera":
+                name = row.get("name") or ""
+                name_item = QtWidgets.QTableWidgetItem(name)
+                try:
+                    name_item.setIcon(self._camera_icon())
+                except Exception:
+                    name_item.setText(u"[C] " + name)
+                name_item.setData(QtCore.Qt.UserRole, row.get("path") or "")
+                dash = none_base
+                proj = row.get("base_name") or dash
+                items = [
+                    name_item,
+                    QtWidgets.QTableWidgetItem(dash),
+                    QtWidgets.QTableWidgetItem(dash),
+                    QtWidgets.QTableWidgetItem(dash),
+                    QtWidgets.QTableWidgetItem(proj),
+                    QtWidgets.QTableWidgetItem(dash),
+                    QtWidgets.QTableWidgetItem(dash),
+                ]
+                tip = u"%s\n%s  fov=%.1f  near=%.3f  far=%.3f" % (
+                    row.get("path") or name,
+                    proj,
+                    float(row.get("fov") or 0),
+                    float(row.get("near") or 0),
+                    float(row.get("far") or 0),
+                )
+                for col, item in enumerate(items):
+                    item.setToolTip(tip)
+                    item.setData(QtCore.Qt.UserRole + 2, "camera")
                     self.tbl_meshes.setItem(i, col, item)
                 continue
 
@@ -984,7 +1089,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def _on_maya_selection_changed(self, *_args):
         if getattr(self, "_syncing_to_maya", False):
             return
-        if not (self._mesh_rows or self._light_rows):
+        if not (self._mesh_rows or self._light_rows or self._camera_rows):
             return
         # 延后一帧，避免与其它 UI 刷新打架
         def _go():
@@ -1110,7 +1215,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         if col not in (5, 6):
             return
         entry = self._entry_at_table_row(row)
-        if not entry or entry.get("kind") in ("light", "separator"):
+        if not entry or entry.get("kind") in ("light", "camera", "separator"):
             return
         uv_index = 0 if col == 5 else 1
         self._prompt_rename_uv([entry], uv_index)
@@ -1125,8 +1230,8 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         entry = self._entry_at_table_row(row)
         if not entry or entry.get("kind") == "separator":
             return
-        # 灯光行：暂无定位/UV 菜单
-        if entry.get("kind") == "light":
+        # 灯光 / 摄影机行：暂无定位/UV 菜单
+        if entry.get("kind") in ("light", "camera"):
             return
 
         # 右键落在未选中行上：改为只选该行
@@ -1137,7 +1242,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         data_rows = [
             r for r in self._selected_data_rows()
-            if r.get("kind") not in ("light", "separator")
+            if r.get("kind") not in ("light", "camera", "separator")
         ]
         if not data_rows:
             data_rows = [entry]

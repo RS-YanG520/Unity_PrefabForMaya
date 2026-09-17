@@ -175,11 +175,13 @@ def diagnose_scene(selection=None):
     from material_mapper import collect_materials
     from coords import transform_to_unity
     from light_mapper import map_lights, ambient_color_from
+    from camera_mapper import map_cameras
 
     groups, singletons = analyze(selection)
     materials, textures = collect_materials()
     scene_lights, ambients = map_lights(selection)
     ambient_col = ambient_color_from(ambients)
+    scene_cameras = map_cameras(selection)
 
     meshes = []
     for g in groups:
@@ -234,6 +236,7 @@ def diagnose_scene(selection=None):
         "singletons": len(singletons),
         "light_count": len(scene_lights),
         "ambient_count": len(ambients),
+        "camera_count": len(scene_cameras),
     }
 
     lines = []
@@ -249,12 +252,13 @@ def diagnose_scene(selection=None):
         )
     )
     lines.append(
-        "Instance groups: %d  |  Singletons: %d  |  Lights: %d  |  Ambient: %d"
+        "Instance groups: %d  |  Singletons: %d  |  Lights: %d  |  Ambient: %d  |  Cameras: %d"
         % (
             summary["instance_groups"],
             summary["singletons"],
             summary["light_count"],
             summary["ambient_count"],
+            summary["camera_count"],
         )
     )
     lines.append("")
@@ -368,6 +372,24 @@ def diagnose_scene(selection=None):
                 % (ambient_col[0], ambient_col[1], ambient_col[2])
             )
 
+    lines.append("Cameras: %d" % len(scene_cameras))
+    for C in scene_cameras:
+        pos, rot, scale = transform_to_unity(C["path"])
+        lines.append(
+            "  - %s  fov=%.1f  near=%.3f  far=%.3f  ortho=%s"
+            % (
+                C.get("name"),
+                float(C.get("fov") or 0),
+                float(C.get("near") or 0),
+                float(C.get("far") or 0),
+                "yes" if C.get("orthographic") else "no",
+            )
+        )
+        lines.append(
+            "      pos=%s  rot=%s  scale=%s"
+            % (_fmt_vec3(pos), _fmt_quat(rot), _fmt_vec3(scale))
+        )
+
     lines.append("====================================================")
 
     report = "\n".join(lines)
@@ -377,5 +399,6 @@ def diagnose_scene(selection=None):
         "meshes": meshes,
         "lights": scene_lights,
         "ambients": ambients,
+        "cameras": scene_cameras,
         "report": report,
     }

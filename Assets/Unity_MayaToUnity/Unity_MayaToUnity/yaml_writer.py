@@ -798,8 +798,13 @@ Transform:
 """
 
 
-def scene_header(disable_default_light=False, ambient_color=None, sun_light_id=0):
-    """场景头：可选关闭模板平行光、写入 ambient、绑定 m_Sun。"""
+def scene_header(
+    disable_default_light=False,
+    ambient_color=None,
+    sun_light_id=0,
+    disable_default_camera=False,
+):
+    """场景头：可选关闭模板平行光/主相机、写入 ambient、绑定 m_Sun。"""
     text = SCENE_HEADER
     if disable_default_light:
         text = text.replace(
@@ -811,6 +816,22 @@ def scene_header(disable_default_light=False, ambient_color=None, sun_light_id=0
             "  m_IsActive: 1\n",
             "  m_Name: Directional Light\n"
             "  m_TagString: Untagged\n"
+            "  m_Icon: {fileID: 0}\n"
+            "  m_NavMeshLayer: 0\n"
+            "  m_StaticEditorFlags: 0\n"
+            "  m_IsActive: 0\n",
+            1,
+        )
+    if disable_default_camera:
+        text = text.replace(
+            "  m_Name: Main Camera\n"
+            "  m_TagString: MainCamera\n"
+            "  m_Icon: {fileID: 0}\n"
+            "  m_NavMeshLayer: 0\n"
+            "  m_StaticEditorFlags: 0\n"
+            "  m_IsActive: 1\n",
+            "  m_Name: Main Camera\n"
+            "  m_TagString: MainCamera\n"
             "  m_Icon: {fileID: 0}\n"
             "  m_NavMeshLayer: 0\n"
             "  m_StaticEditorFlags: 0\n"
@@ -987,6 +1008,150 @@ def light_gameobject_block(
     )
 
 
+def camera_gameobject_block(
+    go_id, cam_id, tr_id, name, cam_props,
+    parent_tr_id, position, rotation, scale,
+    children_tr_ids, root_order, audio_id=0,
+):
+    """生成场景里的摄影机 GameObject + Camera + Transform（可选 AudioListener）。
+
+    cam_props：fov / near / far / orthographic / ortho_size / enabled / is_main
+    audio_id：>0 时附加 AudioListener（通常仅主相机）。
+    """
+    px, py, pz = position
+    qx, qy, qz, qw = rotation
+    sx, sy, sz = scale
+
+    fov = float(cam_props.get("fov") or 60.0)
+    near = float(cam_props.get("near") or 0.3)
+    far = float(cam_props.get("far") or 1000.0)
+    orthographic = 1 if cam_props.get("orthographic") else 0
+    ortho_size = float(cam_props.get("ortho_size") or 5.0)
+    enabled = 1 if cam_props.get("enabled", True) else 0
+    is_main = bool(cam_props.get("is_main"))
+    tag = "MainCamera" if is_main else "Untagged"
+    depth = -1 if is_main else 0
+
+    if children_tr_ids:
+        children_lines = "\n".join(
+            "  - {fileID: %d}" % cid for cid in children_tr_ids
+        )
+        children_block = "  m_Children:\n%s\n" % children_lines
+    else:
+        children_block = "  m_Children: []\n"
+
+    # 组件顺序：Transform、Camera、[AudioListener]
+    comp_lines = [
+        "  - component: {fileID: %d}" % tr_id,
+        "  - component: {fileID: %d}" % cam_id,
+    ]
+    if audio_id:
+        comp_lines.append("  - component: {fileID: %d}" % audio_id)
+    comp_block = "\n".join(comp_lines)
+
+    audio_block = ""
+    if audio_id:
+        audio_block = (
+            "--- !u!81 &%d\n"
+            "AudioListener:\n"
+            "  m_ObjectHideFlags: 0\n"
+            "  m_CorrespondingSourceObject: {fileID: 0}\n"
+            "  m_PrefabInstance: {fileID: 0}\n"
+            "  m_PrefabAsset: {fileID: 0}\n"
+            "  m_GameObject: {fileID: %d}\n"
+            "  m_Enabled: 1\n"
+        ) % (audio_id, go_id)
+
+    return (
+        "--- !u!1 &%d\n"
+        "GameObject:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  serializedVersion: 6\n"
+        "  m_Component:\n"
+        "%s\n"
+        "  m_Layer: 0\n"
+        "  m_Name: %s\n"
+        "  m_TagString: %s\n"
+        "  m_Icon: {fileID: 0}\n"
+        "  m_NavMeshLayer: 0\n"
+        "  m_StaticEditorFlags: 0\n"
+        "  m_IsActive: 1\n"
+        "%s"
+        "--- !u!20 &%d\n"
+        "Camera:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  m_GameObject: {fileID: %d}\n"
+        "  m_Enabled: %d\n"
+        "  serializedVersion: 2\n"
+        "  m_ClearFlags: 1\n"
+        "  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}\n"
+        "  m_projectionMatrixMode: 1\n"
+        "  m_GateFitMode: 2\n"
+        "  m_FOVAxisMode: 0\n"
+        "  m_SensorSize: {x: 36, y: 24}\n"
+        "  m_LensShift: {x: 0, y: 0}\n"
+        "  m_FocalLength: 50\n"
+        "  m_NormalizedViewPortRect:\n"
+        "    serializedVersion: 2\n"
+        "    x: 0\n"
+        "    y: 0\n"
+        "    width: 1\n"
+        "    height: 1\n"
+        "  near clip plane: %s\n"
+        "  far clip plane: %s\n"
+        "  field of view: %s\n"
+        "  orthographic: %d\n"
+        "  orthographic size: %s\n"
+        "  m_Depth: %d\n"
+        "  m_CullingMask:\n"
+        "    serializedVersion: 2\n"
+        "    m_Bits: 4294967295\n"
+        "  m_RenderingPath: -1\n"
+        "  m_TargetTexture: {fileID: 0}\n"
+        "  m_TargetDisplay: 0\n"
+        "  m_TargetEye: 3\n"
+        "  m_HDR: 1\n"
+        "  m_AllowMSAA: 1\n"
+        "  m_AllowDynamicResolution: 0\n"
+        "  m_ForceIntoRT: 0\n"
+        "  m_OcclusionCulling: 1\n"
+        "  m_StereoConvergence: 10\n"
+        "  m_StereoSeparation: 0.022\n"
+        "--- !u!4 &%d\n"
+        "Transform:\n"
+        "  m_ObjectHideFlags: 0\n"
+        "  m_CorrespondingSourceObject: {fileID: 0}\n"
+        "  m_PrefabInstance: {fileID: 0}\n"
+        "  m_PrefabAsset: {fileID: 0}\n"
+        "  m_GameObject: {fileID: %d}\n"
+        "  m_LocalRotation: {x: %s, y: %s, z: %s, w: %s}\n"
+        "  m_LocalPosition: {x: %s, y: %s, z: %s}\n"
+        "  m_LocalScale: {x: %s, y: %s, z: %s}\n"
+        "  m_ConstrainProportionsScale: 0\n"
+        "%s"
+        "  m_Father: {fileID: %d}\n"
+        "  m_RootOrder: %d\n"
+        "  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}\n"
+    ) % (
+        go_id, comp_block, name, tag,
+        audio_block,
+        cam_id, go_id, enabled,
+        _f(near), _f(far), _f(fov), orthographic, _f(ortho_size), depth,
+        tr_id, go_id,
+        _f(qx), _f(qy), _f(qz), _f(qw),
+        _f(px), _f(py), _f(pz),
+        _f(sx), _f(sy), _f(sz),
+        children_block,
+        parent_tr_id, root_order,
+    )
+
+
 def empty_gameobject_block(
     go_id, tr_id, name, parent_tr_id, position, rotation, scale,
     children_tr_ids, root_order,
@@ -1107,10 +1272,12 @@ def scene_file(
     disable_default_light=False,
     ambient_color=None,
     sun_light_id=0,
+    disable_default_camera=False,
 ):
-    """组装完整场景文件：场景模板 + 空组 / 灯光 / PrefabInstance 等块。"""
+    """组装完整场景文件：场景模板 + 空组 / 灯光 / 摄影机 / PrefabInstance 等块。"""
     return scene_header(
         disable_default_light=disable_default_light,
         ambient_color=ambient_color,
         sun_light_id=sun_light_id,
+        disable_default_camera=disable_default_camera,
     ) + body_blocks

@@ -185,16 +185,17 @@ def _quat_mul(a, b):
     )
 
 
-# Maya 灯光沿局部 -Z 照射；Unity Light 沿局部 +Z（forward）。
+# Maya 灯光/摄影机沿局部 -Z；Unity 沿局部 +Z（forward）。
 # 转换完 TRS 后再本地绕 Y 转 180°，把瞄准轴对齐。
-_LIGHT_AIM_FLIP_Y180 = (0.0, 1.0, 0.0, 0.0)
+_AIM_FLIP_Y180 = (0.0, 1.0, 0.0, 0.0)
 
 
 def transform_to_unity_local_light(node, parent_path=None):
-    """灯光专用：与 mesh 相同的坐标转换，再补瞄准轴（-Z→+Z）。
-
-    缩放强制为 (1,1,1)：Maya 灯光 Scale 只影响图标大小，不影响光照。
-    """
+    """灯光/摄影机专用：坐标转换 + 瞄准轴（-Z→+Z），缩放强制 1。"""
     pos, rot, _scale = transform_to_unity_local(node, parent_path)
-    rot = _quat_mul(rot, _LIGHT_AIM_FLIP_Y180)
+    rot = _quat_mul(rot, _AIM_FLIP_Y180)
     return pos, rot, (1.0, 1.0, 1.0)
+
+
+# 摄影机与灯光瞄准约定相同
+transform_to_unity_local_camera = transform_to_unity_local_light

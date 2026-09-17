@@ -199,16 +199,20 @@ _STRINGS = {
         "zh": u"诊断信息",
     },
     "ui_diag_placeholder": {
-        "en": u"Click Diagnose to refresh summary, meshes and lights.",
-        "zh": u"点击「诊断」刷新汇总、模型与灯光列表。",
+        "en": u"Click Diagnose to refresh summary, meshes, lights and cameras.",
+        "zh": u"点击「诊断」刷新汇总、模型、灯光与摄影机列表。",
     },
     "ui_diag_summary": {
-        "en": u"Models: %d  |  Lights: %d  |  Mats: %d  |  Tex: %d  |  Faces: %d  |  Est: %s",
-        "zh": u"模型: %d  |  灯光: %d  |  材质: %d  |  贴图: %d  |  面数: %d  |  预估导出: %s",
+        "en": u"Models: %d  |  Lights: %d  |  Cams: %d  |  Mats: %d  |  Tex: %d  |  Faces: %d  |  Est: %s",
+        "zh": u"模型: %d  |  灯光: %d  |  相机: %d  |  材质: %d  |  贴图: %d  |  面数: %d  |  预估导出: %s",
     },
     "ui_diag_lights_sep": {
         "en": u"──────── Lights ────────",
         "zh": u"──────── 灯光 ────────",
+    },
+    "ui_diag_cameras_sep": {
+        "en": u"──────── Cameras ────────",
+        "zh": u"──────── 摄影机 ────────",
     },
     "ui_col_name": {
         "en": u"Name",

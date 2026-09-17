@@ -21,9 +21,14 @@ import maya.mel as mel
 from constants import guid_from_string, to_maya_ui
 from coords import transform_to_unity_local, transform_to_unity_local_light
 from instance_detector import analyze
-from hierarchy import build_hierarchy, merge_lights_into_hierarchy
+from hierarchy import (
+    build_hierarchy,
+    merge_lights_into_hierarchy,
+    merge_cameras_into_hierarchy,
+)
 from material_mapper import collect_materials
 from light_mapper import map_lights, ambient_color_from
+from camera_mapper import map_cameras
 import yaml_writer
 import debug
 
@@ -617,10 +622,19 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     if scene_lights:
         hierarchy = merge_lights_into_hierarchy(
             hierarchy, [L["path"] for L in scene_lights])
-    debug.log("Hierarchy nodes: %d (groups+meshes+lights)" % len(hierarchy))
+    scene_cameras = map_cameras(selection)
+    # 第一台用户相机作为 MainCamera
+    if scene_cameras:
+        scene_cameras[0]["is_main"] = True
+    camera_by_path = dict((C["path"], C) for C in scene_cameras)
+    if scene_cameras:
+        hierarchy = merge_cameras_into_hierarchy(
+            hierarchy, [C["path"] for C in scene_cameras])
     debug.log(
-        "Lights: %d scene + %d ambient"
-        % (len(scene_lights), len(ambients))
+        "Hierarchy nodes: %d (groups+meshes+lights+cameras)" % len(hierarchy))
+    debug.log(
+        "Lights: %d scene + %d ambient | Cameras: %d"
+        % (len(scene_lights), len(ambients), len(scene_cameras))
     )
     for hn in hierarchy:
         debug.log("  [%s] %s parent=%s children=%s" % (
@@ -750,10 +764,11 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         for member in g.members:
             prefab_guid_by_transform[_long_name(member)] = base_guid
 
-    # 7. 场景：保留组嵌套，本地 TRS 相对父节点；灯光写成 Light GameObject
+    # 7. 场景：保留组嵌套，本地 TRS 相对父节点；灯光 / 摄影机写成组件 GO
     # fileID：空组 GO 5000+ / Transform 5000000+；
     #         PrefabInstance 1000+ / stripped 1000000+；
-    #         灯光 GO 3000+ / Light 300000+ / Transform 310000+
+    #         灯光 GO 3000+ / Light 300000+ / Transform 310000+；
+    #         相机 GO 4000+ / Camera 400000+ / Audio 405000+ / Transform 410000+
     go_id = 5000
     group_tr_id = 5000000
     instance_id = 1000
@@ -761,10 +776,14 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     light_go_id = 3000
     light_comp_id = 300000
     light_tr_id = 310000
+    cam_go_id = 4000
+    cam_comp_id = 400000
+    cam_audio_id = 405000
+    cam_tr_id = 410000
 
     # path -> {kind, tr_id, go_id/instance_id/light_id, root_order, props?}
     id_map = {}
-    # 先算每个节点在兄弟中的 root_order（场景根从 2 起，避开相机/灯）
+    # 先算每个节点在兄弟中的 root_order（场景根从 2 起，避开模板相机/灯）
     root_order_of = {}
     roots = [x.path for x in hierarchy if x.parent_path is None]
     by_path = dict((x.path, x) for x in hierarchy)
@@ -797,6 +816,24 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             light_go_id += 1
             light_comp_id += 1
             light_tr_id += 1
+        elif hn.kind == 'camera':
+            props = camera_by_path.get(hn.path) or {}
+            entry = {
+                'kind': 'camera',
+                'go_id': cam_go_id,
+                'cam_id': cam_comp_id,
+                'tr_id': cam_tr_id,
+                'root_order': root_order_of.get(hn.path, 0),
+                'props': props,
+                'audio_id': 0,
+            }
+            if props.get('is_main'):
+                entry['audio_id'] = cam_audio_id
+                cam_audio_id += 1
+            id_map[hn.path] = entry
+            cam_go_id += 1
+            cam_comp_id += 1
+            cam_tr_id += 1
         else:
             id_map[hn.path] = {
                 'kind': 'mesh',
@@ -808,7 +845,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             mesh_tr_id += 1
 
     blocks = []
-    # 先写空组（父先于子已由 hierarchy 排序保证）；灯光节点不当空组写
+    # 先写空组（父先于子已由 hierarchy 排序保证）；灯光/相机不当空组写
     for hn in hierarchy:
         if hn.kind != 'group':
             continue
@@ -858,6 +895,38 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         if sun_light_id == 0 and props.get("unity_type") == 1:
             sun_light_id = info['light_id']
 
+    # 摄影机 GameObject
+    for hn in hierarchy:
+        if hn.kind != 'camera':
+            continue
+        info = id_map[hn.path]
+        props = info.get('props') or camera_by_path.get(hn.path)
+        if not props:
+            cmds.warning(to_maya_ui(
+                "Unity_MayaToUnity: missing camera props for %s, skip." % hn.path
+            ))
+            continue
+        parent_tr = 0
+        if hn.parent_path and hn.parent_path in id_map:
+            parent_tr = id_map[hn.parent_path]['tr_id']
+        pos, rot, scale = transform_to_unity_local_light(hn.path, hn.parent_path)
+        child_trs = []
+        for cp in hn.children:
+            if cp in id_map:
+                child_trs.append(id_map[cp]['tr_id'])
+        debug.log(
+            "Camera %s fov=%s near=%s far=%s main=%s parent_tr=%s"
+            % (
+                hn.name, props.get("fov"), props.get("near"),
+                props.get("far"), props.get("is_main"), parent_tr,
+            )
+        )
+        blocks.append(yaml_writer.camera_gameobject_block(
+            info['go_id'], info['cam_id'], info['tr_id'], hn.name, props,
+            parent_tr, pos, rot, scale, child_trs, info['root_order'],
+            audio_id=info.get('audio_id') or 0,
+        ))
+
     # 再写 PrefabInstance
     for hn in hierarchy:
         if hn.kind != 'mesh':
@@ -891,6 +960,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
     ambient_col = ambient_color_from(ambients)
     disable_default = bool(scene_lights)
+    disable_default_cam = bool(scene_cameras)
     scene_path = os.path.join(output_dir, scene_name + ".unity")
     _write_text(
         scene_path,
@@ -899,6 +969,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
             disable_default_light=disable_default,
             ambient_color=ambient_col,
             sun_light_id=sun_light_id,
+            disable_default_camera=disable_default_cam,
         ),
     )
     generated.append(scene_path)
