@@ -442,6 +442,98 @@ _STRINGS = {
         "en": u"Help",
         "zh": u"帮助",
     },
+    "ui_ue_tex_menu": {
+        "en": u"UE Textures",
+        "zh": u"贴图转换",
+    },
+    "ui_ue_tex_title": {
+        "en": u"UE to Unity Textures",
+        "zh": u"UE 贴图转 Unity",
+    },
+    "ui_ue_tex_suffix": {
+        "en": u"Suffix",
+        "zh": u"同名后缀",
+    },
+    "ui_ue_tex_run": {
+        "en": u"Convert",
+        "zh": u"转换",
+    },
+    "ui_ue_tex_path_ph": {
+        "en": u"Folder of UE textures...",
+        "zh": u"选择 UE 贴图所在文件夹...",
+    },
+    "ui_ue_tex_hint": {
+        "en": u"Color is copied. Normal flips green. Metal/roughness is built from ORM (B→metal RGB, inverted G→smoothness alpha). Other files are listed but skipped.",
+        "zh": u"颜色贴图原样输出；法线翻转 G；金属粗糙度由 ORM 合成（B 写入金属度 RGB，G 取反写入光滑度 A）。其余贴图只列出、不转换。",
+    },
+    "ui_ue_tex_suf_base": {
+        "en": u"Color",
+        "zh": u"颜色",
+    },
+    "ui_ue_tex_suf_normal": {
+        "en": u"Normal",
+        "zh": u"法线",
+    },
+    "ui_ue_tex_suf_orm": {
+        "en": u"Metal / Roughness",
+        "zh": u"金属粗糙度",
+    },
+    "ui_ue_tex_out": {
+        "en": u"Output (same level): %s",
+        "zh": u"输出（与贴图文件夹同级）: %s",
+    },
+    "ui_ue_tex_col_name": {
+        "en": u"Name",
+        "zh": u"名称",
+    },
+    "ui_ue_tex_col_out": {
+        "en": u"Output Name",
+        "zh": u"输出名称",
+    },
+    "ui_ue_tex_col_res": {
+        "en": u"Resolution",
+        "zh": u"分辨率",
+    },
+    "ui_ue_tex_col_size": {
+        "en": u"Size",
+        "zh": u"大小",
+    },
+    "ui_ue_tex_sub": {
+        "en": u"Include subfolders",
+        "zh": u"包含子文件夹",
+    },
+    "ui_ue_tex_out_each": {
+        "en": u"Each texture is written beside its own folder.",
+        "zh": u"每张贴图输出到自己所在文件夹的同级目录。",
+    },
+    "ui_ue_tex_no_dir": {
+        "en": u"Unity_MayaToUnity: choose a texture folder first.",
+        "zh": u"Unity_MayaToUnity: 请先选择贴图文件夹。",
+    },
+    "ui_ue_tex_none": {
+        "en": u"Unity_MayaToUnity: no _D / _N / _ORM textures in this folder.",
+        "zh": u"Unity_MayaToUnity: 该文件夹里没有可转换的 _D / _N / _ORM 贴图。",
+    },
+    "ui_ue_tex_working": {
+        "en": u"Converting %d / %d  %s",
+        "zh": u"正在转换 %d / %d  %s",
+    },
+    "ui_ue_tex_done": {
+        "en": u"Done. %d converted, %d failed.\n%s",
+        "zh": u"完成。成功 %d，失败 %d。\n%s",
+    },
+    "ui_ue_tex_locate": {
+        "en": u"Show in Explorer",
+        "zh": u"定位到贴图",
+    },
+    "ui_ue_tex_locate_multi": {
+        "en": u"Show in Explorer (%d)",
+        "zh": u"定位到贴图（%d 个）",
+    },
+    "ui_ue_tex_locate_missing": {
+        "en": u"Unity_MayaToUnity: texture file not found.",
+        "zh": u"Unity_MayaToUnity: 找不到这张贴图。",
+    },
     "ui_btn_browse": {
         "en": u"Browse",
         "zh": u"浏览",

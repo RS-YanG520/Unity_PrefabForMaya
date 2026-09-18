@@ -160,6 +160,7 @@ def reload_modules():
             "exporter", "coords", "constants", "debug",
             "instance_detector", "material_mapper", "yaml_writer", "hierarchy",
             "material_convert", "texture_drop", "i18n", "ui", "size_map",
+            "ue_tex_convert",
         ):
             path = getattr(mod, "__file__", "") or ""
             if "Unity_MayaToUnity" in path.replace("\\", "/"):

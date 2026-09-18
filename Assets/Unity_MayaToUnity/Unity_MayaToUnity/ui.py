@@ -110,6 +110,11 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.menu_options = self.menubar.addMenu("Options")
         self.menu_help = self.menubar.addMenu("Help")
 
+        self.act_ue_tex = QtWidgets.QAction(self)
+        self.act_ue_tex.triggered.connect(self._on_ue_tex)
+        self.menubar.insertAction(
+            self.menu_help.menuAction(), self.act_ue_tex)
+
         self.act_debug = QtWidgets.QAction(self)
         self.act_debug.setCheckable(True)
         self.act_debug.setChecked(bool(debug.DEBUG))
@@ -483,6 +488,8 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.setWindowTitle(i18n.tr("menu_root"))
         self.menu_options.setTitle(i18n.tr("ui_menu_options"))
         self.menu_help.setTitle(i18n.tr("ui_menu_help"))
+        self.act_ue_tex.setText(i18n.tr("ui_ue_tex_menu"))
+        self.act_ue_tex.setToolTip(i18n.tr("ui_ue_tex_title"))
         self.menu_lang.setTitle(i18n.tr("menu_language"))
 
         self.btn_browse.setText(i18n.tr("ui_btn_browse"))
@@ -1204,6 +1211,12 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         except Exception:
             pass
         try:
+            ue = getattr(self, "_ue_tex_win", None)
+            if ue is not None:
+                ue.close()
+        except Exception:
+            pass
+        try:
             super(ToolboxWindow, self).closeEvent(event)
         except Exception:
             if event is not None:
@@ -1235,6 +1248,30 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             return
         try:
             win.set_highlight(paths)
+        except Exception:
+            pass
+
+    def _on_ue_tex(self):
+        """打开 UE → Unity 贴图转换窗口。"""
+        import ue_tex_convert
+        win = getattr(self, "_ue_tex_win", None)
+        if win is not None:
+            try:
+                win.objectName()
+            except Exception:
+                win = None
+                self._ue_tex_win = None
+        if win is None:
+            win = ue_tex_convert.UeTexWindow(_maya_main_window())
+            self._ue_tex_win = win
+        try:
+            win.retranslate()
+        except Exception:
+            pass
+        win.show()
+        try:
+            win.raise_()
+            win.activateWindow()
         except Exception:
             pass
 
