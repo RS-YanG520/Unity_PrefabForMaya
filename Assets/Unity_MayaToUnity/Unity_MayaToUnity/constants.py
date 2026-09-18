@@ -41,6 +41,9 @@ FILEID_SHADER_STANDARD = 46          # 内置 Standard shader 的 fileID
 # 例：SM_Bucket_Small → SM_Bucket_Small_Inst.fbx / .prefab
 INSTANCE_BASE_SUFFIX = "_Inst"
 
+# 写在共享 mesh shape 上：覆盖实例组导出 Prefab/FBX 名（诊断列表可改）
+MTU_PREFAB_NAME_ATTR = "mtu_prefabName"
+
 
 def _to_bytes(value):
     """把 str / unicode 统一成 bytes（Python 2 下 hashlib 需要 str）。"""

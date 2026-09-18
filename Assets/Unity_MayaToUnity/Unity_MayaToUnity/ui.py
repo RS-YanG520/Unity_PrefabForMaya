@@ -227,6 +227,9 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             "color: #d0d0d0; font-size: 11px; padding: 2px 4px;")
         root.addWidget(self.lbl_diag_summary)
 
+        self.btn_size_map = self._btn(self._on_size_map)
+        root.addWidget(self.btn_size_map)
+
         self.tbl_meshes = QtWidgets.QTableWidget(0, 7)
         self.tbl_meshes.setHorizontalHeaderLabels(
             ["Name", "Faces", "Instance", "Size", "Base", "UV0", "UV1"])
@@ -503,6 +506,14 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.btn_tex_rules.setToolTip(i18n.tr("ui_texdrop_rules_tip"))
         self.lbl_status.setText(i18n.tr("ui_status_hint"))
         self.lbl_diag_title.setText(i18n.tr("ui_diag_title"))
+        self.btn_size_map.setText(i18n.tr("ui_btn_size_map"))
+        self.btn_size_map.setToolTip(i18n.tr("ui_size_map_tip"))
+        size_win = self._size_map_alive()
+        if size_win is not None:
+            try:
+                size_win.retranslate()
+            except Exception:
+                pass
         if not self.lbl_diag_summary.text():
             self.lbl_diag_summary.setText(i18n.tr("ui_diag_placeholder"))
         self.tbl_meshes.setHorizontalHeaderLabels([
@@ -642,6 +653,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self._light_rows = []
             self._camera_rows = []
             self.tbl_meshes.setRowCount(0)
+            self._refresh_size_map()
             return
 
         summary = result.get("summary") or {}
@@ -667,6 +679,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self._apply_mesh_sort()
         # 诊断刷新后按当前 Maya 选择同步一次表高亮
         self._sync_table_from_maya_selection()
+        self._refresh_size_map()
 
     def _normalize_light_rows(self, lights):
         """诊断灯光 → 表格行数据。"""
@@ -1128,20 +1141,17 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         return paths
 
     def _entry_matches_paths(self, entry, path_set):
+        """行是否对应当前 Maya 选中（只匹配本行 path，不扩展到整组实例）。"""
         if not entry or not path_set:
             return False
         path = entry.get("path") or ""
         if path and path in path_set:
             return True
-        for mp in entry.get("member_paths") or []:
-            if mp and mp in path_set:
-                return True
         # 短名回退（跨 namespace / 路径不一致时）
-        leaves = set(p.split("|")[-1] for p in path_set)
-        if path and path.split("|")[-1] in leaves:
-            return True
-        for mp in entry.get("member_paths") or []:
-            if mp and mp.split("|")[-1] in leaves:
+        if path:
+            leaf = path.split("|")[-1]
+            leaves = set(p.split("|")[-1] for p in path_set)
+            if leaf in leaves:
                 return True
         return False
 
@@ -1152,6 +1162,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         path_set = self._maya_selected_transforms()
         entries = self._table_entries()
         if not entries:
+            self._sync_size_map_highlight(path_set)
             return
 
         self._syncing_from_maya = True
@@ -1179,10 +1190,17 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                     pass
         finally:
             self._syncing_from_maya = False
+        self._sync_size_map_highlight(path_set)
 
     def closeEvent(self, event):
         try:
             self._kill_selection_job()
+        except Exception:
+            pass
+        try:
+            win = self._size_map_alive()
+            if win is not None:
+                win.close()
         except Exception:
             pass
         try:
@@ -1191,13 +1209,88 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             if event is not None:
                 event.accept()
 
+    def _size_map_alive(self):
+        win = getattr(self, "_size_map", None)
+        if win is None:
+            return None
+        try:
+            win.objectName()
+        except Exception:
+            self._size_map = None
+            return None
+        return win
+
+    def _refresh_size_map(self):
+        win = self._size_map_alive()
+        if win is None:
+            return
+        try:
+            win.set_mesh_rows(self._mesh_rows)
+        except Exception:
+            pass
+
+    def _sync_size_map_highlight(self, paths):
+        win = self._size_map_alive()
+        if win is None:
+            return
+        try:
+            win.set_highlight(paths)
+        except Exception:
+            pass
+
+    def _on_size_map(self):
+        """打开场景大小图。还没诊断时先诊断。"""
+        def _go():
+            if not self._mesh_rows:
+                import Unity_MayaToUnity as pkg
+                result = pkg.diagnose(show_dialog=False)
+                self.set_diagnose_result(result)
+            import size_map
+            win = self._size_map_alive()
+            if win is None:
+                win = size_map.SizeMapWindow(_maya_main_window())
+                win.set_pick_handler(self._on_size_map_pick)
+                self._size_map = win
+            try:
+                win.retranslate()
+            except Exception:
+                pass
+            win.set_mesh_rows(self._mesh_rows)
+            win.show()
+            try:
+                win.raise_()
+                win.activateWindow()
+            except Exception:
+                pass
+            self._sync_size_map_highlight(self._maya_selected_transforms())
+        self._defer(_go)
+
+    def _on_size_map_pick(self, paths):
+        paths = [p for p in (paths or []) if p and cmds.objExists(p)]
+        if not paths:
+            cmds.warning(i18n.tr("ui_warn_mesh_missing"))
+            return
+        if len(paths) == 1:
+            self._select_mesh_in_maya(paths[0])
+        else:
+            self._select_meshes_in_maya(paths)
+        self._sync_table_from_maya_selection()
+
     def _on_mesh_cell_clicked(self, row, col):
         entry = self._entry_at_table_row(row)
         if not entry or entry.get("kind") == "separator":
             return
-        # 点名称：按当前多选（含 Ctrl / Shift）同步到 Maya
+        # 点名称：只选当前行对应模型（Ctrl/Shift 多选时按表选同步）
         if col == 0:
-            self._sync_maya_from_table_selection()
+            mods = QtWidgets.QApplication.keyboardModifiers()
+            multi = bool(
+                mods & (QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier))
+            if multi:
+                self._sync_maya_from_table_selection()
+            else:
+                path = entry.get("path") or ""
+                if path:
+                    self._select_mesh_in_maya(path)
             return
         # 点基础模型名：选中该实例组全部成员（仅模型）
         if col == 4 and entry.get("kind") == "instance":
@@ -1206,22 +1299,27 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 return
             paths = item.data(QtCore.Qt.UserRole) or []
             if not paths:
+                paths = list(entry.get("member_paths") or [])
+            if not paths:
                 return
             self._select_meshes_in_maya(paths)
             return
 
     def _on_mesh_cell_double_clicked(self, row, col):
-        """双击 UV0 / UV1：重命名该模型对应 UV 通道。"""
-        if col not in (5, 6):
-            return
+        """双击 UV0 / UV1：重命名 UV；双击基础模型：重命名导出名。"""
         entry = self._entry_at_table_row(row)
         if not entry or entry.get("kind") in ("light", "camera", "separator"):
+            return
+        if col == 4 and entry.get("kind") == "instance":
+            self._prompt_rename_inst_base([entry])
+            return
+        if col not in (5, 6):
             return
         uv_index = 0 if col == 5 else 1
         self._prompt_rename_uv([entry], uv_index)
 
     def _on_mesh_context_menu(self, pos):
-        """右键：定位导出文件 / 批量重命名 UV0·UV1（仅模型）。"""
+        """右键：定位导出文件 / 重命名基础模型 / 批量重命名 UV0·UV1。"""
         index = self.tbl_meshes.indexAt(pos)
         if not index.isValid():
             return
@@ -1257,6 +1355,17 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 label = i18n.tr("ui_ctx_locate_multi", n)
             act_locate = menu.addAction(label)
 
+        # 基础模型列：重命名导出 Prefab/FBX 名
+        act_base = None
+        inst_rows = [r for r in data_rows if r.get("kind") == "instance"]
+        if col == 4 and inst_rows:
+            groups = self._unique_inst_groups(inst_rows)
+            if len(groups) > 1:
+                act_base = menu.addAction(
+                    i18n.tr("ui_ctx_rename_base_multi", len(groups)))
+            else:
+                act_base = menu.addAction(i18n.tr("ui_ctx_rename_base"))
+
         show_uv = col in (0, 5, 6)
         act_uv0 = None
         act_uv1 = None
@@ -1286,10 +1395,119 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             return
         if act_locate is not None and chosen == act_locate:
             self._locate_exported_assets(data_rows)
+        elif act_base is not None and chosen == act_base:
+            self._prompt_rename_inst_base(inst_rows)
         elif act_uv0 is not None and chosen == act_uv0:
             self._prompt_rename_uv(data_rows, 0)
         elif act_uv1 is not None and chosen == act_uv1:
             self._prompt_rename_uv(data_rows, 1)
+
+    def _unique_inst_groups(self, data_rows):
+        """按共享 shape / base_path 去重实例组，每组保留一行代表。"""
+        out = []
+        seen = set()
+        for r in data_rows or []:
+            if not r or r.get("kind") != "instance":
+                continue
+            key = r.get("shape") or r.get("base_path") or r.get("prefab") or ""
+            if not key:
+                key = tuple(sorted(r.get("member_paths") or []))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(r)
+        return out
+
+    def _prompt_rename_inst_base(self, data_rows):
+        """弹出输入框，重命名实例组将要导出的 Prefab/FBX 名。"""
+        groups = self._unique_inst_groups(data_rows)
+        if not groups:
+            return
+
+        current = ""
+        for r in groups:
+            current = r.get("prefab") or r.get("base_name") or ""
+            if current:
+                break
+
+        title = i18n.tr("ui_base_rename_title")
+        label = i18n.tr("ui_base_rename_label", len(groups))
+        new_name, ok = QtWidgets.QInputDialog.getText(
+            self, title, label, QtWidgets.QLineEdit.Normal, current or "")
+        if not ok:
+            return
+        new_name = (new_name or "").strip()
+        if not new_name:
+            cmds.warning(i18n.tr("ui_warn_base_empty"))
+            return
+        for c in ('\\', '/', ':', '*', '?', '"', '<', '>', '|', ' '):
+            if c in new_name:
+                cmds.warning(i18n.tr("ui_warn_base_invalid", new_name))
+                return
+        if new_name in (".", ".."):
+            cmds.warning(i18n.tr("ui_warn_base_invalid", new_name))
+            return
+
+        def _go():
+            ok_n, fail_n = self._rename_inst_base_on_rows(groups, new_name)
+            self._refresh_base_columns()
+            if fail_n:
+                cmds.warning(i18n.tr(
+                    "ui_warn_base_rename_fail", ok_n, fail_n))
+            elif ok_n:
+                print(to_maya_ui(i18n.tr(
+                    "ui_base_rename_ok", new_name, ok_n)))
+
+        self._defer(_go)
+
+    def _rename_inst_base_on_rows(self, groups, new_name):
+        """把导出名写到各组共享 mesh shape，返回 (ok, fail)。"""
+        from instance_detector import set_prefab_name_override
+
+        ok_n = 0
+        fail_n = 0
+        for row in groups or []:
+            shape = row.get("shape") or ""
+            if not shape or not cmds.objExists(shape):
+                # 回退：用当前行 transform 下的 mesh shape
+                path = row.get("path") or row.get("base_path") or ""
+                shapes = self._mesh_shapes(path) if path else []
+                shape = shapes[0] if shapes else ""
+            if not shape or not cmds.objExists(shape):
+                fail_n += 1
+                continue
+            if set_prefab_name_override(shape, new_name):
+                ok_n += 1
+                # 立刻刷新同组所有诊断行（同 shape）
+                for mesh_row in (self._mesh_rows or []):
+                    if mesh_row.get("kind") != "instance":
+                        continue
+                    same = (
+                        mesh_row.get("shape") == shape
+                        or mesh_row.get("shape") == row.get("shape")
+                    )
+                    if not same and row.get("member_paths"):
+                        same = mesh_row.get("path") in (
+                            row.get("member_paths") or [])
+                    if same:
+                        mesh_row["prefab"] = new_name
+                        mesh_row["base_name"] = new_name
+            else:
+                fail_n += 1
+        return ok_n, fail_n
+
+    def _refresh_base_columns(self):
+        """刷新表格中的基础模型列，保持选中。"""
+        selected = set(self._selected_table_rows())
+        self._fill_mesh_table()
+        self.tbl_meshes.clearSelection()
+        for r in selected:
+            if not (0 <= r < self.tbl_meshes.rowCount()):
+                continue
+            for c in range(self.tbl_meshes.columnCount()):
+                it = self.tbl_meshes.item(r, c)
+                if it is not None:
+                    it.setSelected(True)
 
     def _uv_name_from_row(self, data_row, uv_index):
         if not data_row:

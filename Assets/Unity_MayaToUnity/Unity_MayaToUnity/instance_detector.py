@@ -13,7 +13,7 @@ import re
 
 import maya.cmds as cmds
 
-from constants import INSTANCE_BASE_SUFFIX
+from constants import INSTANCE_BASE_SUFFIX, MTU_PREFAB_NAME_ATTR
 
 
 class InstanceGroup(object):
@@ -45,6 +45,57 @@ def _short(node):
 def _long(node):
     longs = cmds.ls(node, long=True) or []
     return longs[0] if longs else node
+
+
+def default_prefab_name(base):
+    """由 base transform 推导默认导出 Prefab/FBX 名。"""
+    leaf = _short(base)
+    return strip_trailing_digits(leaf) + INSTANCE_BASE_SUFFIX
+
+
+def get_prefab_name_override(node):
+    """读取节点上的自定义导出名；无则返回空串。"""
+    if not node or not cmds.objExists(node):
+        return ""
+    if not cmds.attributeQuery(MTU_PREFAB_NAME_ATTR, node=node, exists=True):
+        return ""
+    try:
+        val = cmds.getAttr("%s.%s" % (node, MTU_PREFAB_NAME_ATTR))
+    except Exception:
+        return ""
+    if val is None:
+        return ""
+    return (val or "").strip()
+
+
+def set_prefab_name_override(node, name):
+    """把自定义导出名写到节点（通常是共享 mesh shape）。"""
+    if not node or not cmds.objExists(node):
+        return False
+    name = (name or "").strip()
+    if not name:
+        return False
+    plug = "%s.%s" % (node, MTU_PREFAB_NAME_ATTR)
+    if not cmds.attributeQuery(MTU_PREFAB_NAME_ATTR, node=node, exists=True):
+        try:
+            cmds.addAttr(node, ln=MTU_PREFAB_NAME_ATTR, dt="string")
+        except Exception:
+            return False
+    try:
+        cmds.setAttr(plug, name, type="string")
+        return True
+    except Exception:
+        return False
+
+
+def resolve_prefab_name(base, shape=None):
+    """实例组最终导出名：优先 shape/base 上的覆盖，否则默认规则。"""
+    shape = shape or _mesh_shape(base)
+    for n in (shape, base):
+        override = get_prefab_name_override(n)
+        if override:
+            return override
+    return default_prefab_name(base)
 
 
 def _is_mesh_transform(node):
@@ -139,11 +190,10 @@ def analyze(selection=None):
         members = shape_map[key]
         if len(members) >= 2:
             base = _pick_base(members)
-            leaf = _short(base)
-            prefab = strip_trailing_digits(leaf) + INSTANCE_BASE_SUFFIX
             # InstanceGroup.shape 必须是真实 mesh shape 路径，供材质映射；
             # 身份键 key（uuid:...）只用于分组，不能写进 shape。
             shape_node = _mesh_shape(base)
+            prefab = resolve_prefab_name(base, shape_node)
             groups.append(InstanceGroup(
                 shape_node, base, members, prefab, kind="instance",
             ))

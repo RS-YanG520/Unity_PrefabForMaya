@@ -214,6 +214,74 @@ _STRINGS = {
         "en": u"──────── Cameras ────────",
         "zh": u"──────── 摄影机 ────────",
     },
+    "ui_btn_size_map": {
+        "en": u"Area View",
+        "zh": u"面积可视化",
+    },
+    "ui_size_map_tip": {
+        "en": u"Treemap of model size. Click a block to select it in the scene.",
+        "zh": u"按模型大小画矩形图。点击方块在场景中选中。",
+    },
+    "ui_size_map_title": {
+        "en": u"Area View",
+        "zh": u"面积可视化",
+    },
+    "ui_size_metric_faces": {
+        "en": u"By Faces (Scene)",
+        "zh": u"按面数（场景）",
+    },
+    "ui_size_metric_export": {
+        "en": u"By Est. Export",
+        "zh": u"按预估导出",
+    },
+    "ui_size_color_type": {
+        "en": u"Color: By Type",
+        "zh": u"颜色: 按类型",
+    },
+    "ui_size_color_random": {
+        "en": u"Color: Random",
+        "zh": u"颜色: 随机",
+    },
+    "ui_size_color_heat": {
+        "en": u"Color: By Faces",
+        "zh": u"颜色: 按面数",
+    },
+    "ui_size_heat_high": {
+        "en": u"High",
+        "zh": u"高",
+    },
+    "ui_size_heat_low": {
+        "en": u"Low",
+        "zh": u"低",
+    },
+    "ui_size_legend_inst": {
+        "en": u"Instance group",
+        "zh": u"实例组",
+    },
+    "ui_size_legend_unique": {
+        "en": u"Unique mesh",
+        "zh": u"独立模型",
+    },
+    "ui_size_kind_inst": {
+        "en": u"Instance",
+        "zh": u"实例",
+    },
+    "ui_size_kind_unique": {
+        "en": u"Unique",
+        "zh": u"独立",
+    },
+    "ui_size_tip": {
+        "en": u"%s\n%s    Faces: %d    Size: %s    %.1f%%",
+        "zh": u"%s\n%s    面数: %d    大小: %s    %.1f%%",
+    },
+    "ui_size_empty": {
+        "en": u"No meshes to show. Run Diagnose first.",
+        "zh": u"没有可显示的模型。请先点「诊断」。",
+    },
+    "ui_size_hint": {
+        "en": u"Area = size. Warm = instance group, cool = unique. Click a block, or drag a box to select.",
+        "zh": u"面积表示大小。暖色是实例组，冷色是独立模型。点击方块，或拖拽框选。",
+    },
     "ui_col_name": {
         "en": u"Name",
         "zh": u"名称",
@@ -285,6 +353,38 @@ _STRINGS = {
     "ui_ctx_rename_uv1_multi": {
         "en": u"Rename UV1 (%d selected)...",
         "zh": u"重命名 UV1（已选 %d 个）...",
+    },
+    "ui_ctx_rename_base": {
+        "en": u"Rename Inst Base...",
+        "zh": u"重命名基础模型...",
+    },
+    "ui_ctx_rename_base_multi": {
+        "en": u"Rename Inst Base (%d groups)...",
+        "zh": u"重命名基础模型（%d 组）...",
+    },
+    "ui_base_rename_title": {
+        "en": u"Rename Inst Base",
+        "zh": u"重命名基础模型",
+    },
+    "ui_base_rename_label": {
+        "en": u"Exported Prefab / FBX name (%d group(s)):",
+        "zh": u"导出 Prefab / FBX 名称（%d 组）：",
+    },
+    "ui_base_rename_ok": {
+        "en": u"Unity_MayaToUnity: inst base renamed to %s (%d group(s))",
+        "zh": u"Unity_MayaToUnity: 基础模型已重命名为 %s（%d 组）",
+    },
+    "ui_warn_base_empty": {
+        "en": u"Unity_MayaToUnity: inst base name cannot be empty.",
+        "zh": u"Unity_MayaToUnity: 基础模型名不能为空。",
+    },
+    "ui_warn_base_invalid": {
+        "en": u"Unity_MayaToUnity: invalid inst base name: %s",
+        "zh": u"Unity_MayaToUnity: 非法的基础模型名：%s",
+    },
+    "ui_warn_base_rename_fail": {
+        "en": u"Unity_MayaToUnity: failed to rename inst base (%d ok, %d fail).",
+        "zh": u"Unity_MayaToUnity: 基础模型重命名部分失败（成功 %d，失败 %d）。",
     },
     "ui_uv_rename_title": {
         "en": u"Rename %s",

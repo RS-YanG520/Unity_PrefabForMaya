@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: ed2875a8edc73714a52e44e094fda90f
+guid: d73cac38be2b8f92b71816f882ca4b11
 ModelImporter:
   serializedVersion: 23
   fileIDToRecycleName:
@@ -7,8 +7,8 @@ ModelImporter:
     400000: //RootNode
     2300000: //RootNode
     3300000: //RootNode
-    4300000: SM_Bucket_Small_9
-    4300002: SM_Bucket_Small_9
+    4300000: SM_Bu_A_Inst
+    4300002: SM_Bu_A_Inst
   externalObjects:
   - first:
       type: UnityEngine:Material

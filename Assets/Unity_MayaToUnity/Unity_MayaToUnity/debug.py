@@ -195,6 +195,7 @@ def diagnose_scene(selection=None):
             m_long = (cmds.ls(m, long=True) or [m])[0]
             row["member_paths"] = list(member_paths)
             row["base_name"] = g.prefab_name
+            row["base_path"] = base_long
             if m_long != base_long:
                 row["export_bytes"] = 0
                 row["size"] = u"(shared)"
