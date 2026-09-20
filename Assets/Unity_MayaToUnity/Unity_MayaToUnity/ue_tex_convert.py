@@ -11,6 +11,8 @@ from __future__ import print_function
 from __future__ import division
 
 import os
+import struct
+import zlib
 
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".bmp")
 
@@ -123,25 +125,47 @@ def unique_out_path(folder, stem, ext, suffix):
     return path
 
 
+try:
+    _INVERT_TABLE = bytes(bytearray([255 - i for i in range(256)]))
+except Exception:
+    _INVERT_TABLE = "".join([chr(255 - i) for i in range(256)])
+
+
+def _invert_plane(plane):
+    """整段通道取反。走 C 的 translate，避免逐像素 Python 循环。"""
+    if not isinstance(plane, bytearray):
+        plane = bytearray(plane)
+    return plane.translate(_INVERT_TABLE)
+
+
+def _apply_span(data, start, count, kind):
+    """直接改 data 里的一段 RGBA，不再整图拷贝。"""
+    end = start + count * 4
+    if kind == "normal":
+        data[start + 1:end:4] = _invert_plane(data[start + 1:end:4])
+        return
+    if kind != "orm":
+        return
+    metal = data[start + 2:end:4]
+    smooth = _invert_plane(data[start + 1:end:4])
+    data[start:end:4] = metal
+    data[start + 1:end:4] = metal
+    data[start + 2:end:4] = metal
+    data[start + 3:end:4] = smooth
+
+
 def convert_buffer(data, width, height, bpl, kind):
     """就地改 RGBA 缓冲。kind: base / normal / orm。"""
     if kind == "base" or width <= 0 or height <= 0:
         return data
-    for y in range(height):
-        row = y * bpl
-        x = 0
-        while x < width:
-            i = row + x * 4
-            if kind == "normal":
-                data[i + 1] = 255 - data[i + 1]
-            elif kind == "orm":
-                metal = data[i + 2]
-                smooth = 255 - data[i + 1]
-                data[i] = metal
-                data[i + 1] = metal
-                data[i + 2] = metal
-                data[i + 3] = smooth
-            x += 1
+    tight = width * 4
+    if bpl == tight:
+        _apply_span(data, 0, width * height, kind)
+        return data
+    y = 0
+    while y < height:
+        _apply_span(data, y * bpl, width, kind)
+        y += 1
     return data
 
 
@@ -428,41 +452,90 @@ except ImportError:
         QtGui = None
 
 
+def _bits_addr(ptr, nbytes):
+    """QImage.bits() 的可写地址。Maya 2018 返回 buffer，没有 setsize。"""
+    import ctypes
+    if hasattr(ptr, "setsize"):
+        try:
+            ptr.setsize(int(nbytes))
+        except Exception:
+            pass
+        try:
+            return int(ptr)
+        except Exception:
+            pass
+    api = ctypes.pythonapi
+    api.PyObject_AsWriteBuffer.argtypes = [
+        ctypes.py_object,
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_ssize_t),
+    ]
+    api.PyObject_AsWriteBuffer.restype = ctypes.c_int
+    addr = ctypes.c_void_p()
+    size = ctypes.c_ssize_t()
+    rc = api.PyObject_AsWriteBuffer(
+        ptr, ctypes.byref(addr), ctypes.byref(size))
+    if rc != 0 or not addr.value:
+        raise RuntimeError("cannot access image buffer")
+    return addr.value
+
+
 def _read_rgba(path):
+    import ctypes
     img = QtGui.QImage(path)
     if img.isNull():
         return None
     img = img.convertToFormat(QtGui.QImage.Format_RGBA8888)
+    n = int(img.byteCount())
     ptr = img.bits()
-    ptr.setsize(img.byteCount())
-    raw = bytearray(ptr.asstring())
+    raw = bytearray(ctypes.string_at(_bits_addr(ptr, n), n))
     return img.width(), img.height(), img.bytesPerLine(), raw
 
 
-def _write_rgba(data, width, height, bpl, path):
-    import ctypes
-    img = QtGui.QImage(width, height, QtGui.QImage.Format_RGBA8888)
-    if img.isNull():
-        return False
-    # 行对齐可能和源图不同，按目标 bytesPerLine 重排
-    dst_bpl = img.bytesPerLine()
-    if dst_bpl != bpl:
-        packed = bytearray(img.byteCount())
-        for y in range(height):
-            src = y * bpl
-            dst = y * dst_bpl
-            packed[dst:dst + width * 4] = data[src:src + width * 4]
-        data = packed
-        bpl = dst_bpl
-    ptr = img.bits()
-    ptr.setsize(img.byteCount())
-    buf = (ctypes.c_char * len(data)).from_buffer(data)
-    ctypes.memmove(int(ptr), buf, len(data))
-    copied = img.copy()
+def _png_chunk(tag, payload):
+    if not isinstance(payload, type(b"")):
+        payload = bytes(payload)
+    crc = zlib.crc32(tag)
+    crc = zlib.crc32(payload, crc) & 0xffffffff
+    return struct.pack(">I", len(payload)) + tag + payload + struct.pack(">I", crc)
+
+
+def _write_png(path, data, width, height, bpl):
+    """低压缩 PNG。像素和最高压缩完全一样，只是文件稍大、写入快得多。"""
+    row = width * 4
+    stride = row + 1
+    raw = bytearray(height * stride)
+    y = 0
+    while y < height:
+        dst = y * stride
+        src = y * bpl
+        raw[dst + 1:dst + stride] = data[src:src + row]
+        y += 1
+    try:
+        compressed = zlib.compress(raw, 1)
+    except TypeError:
+        compressed = zlib.compress(buffer(raw), 1)
+    blob = (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+        + _png_chunk(b"IDAT", compressed)
+        + _png_chunk(b"IEND", b"")
+    )
     folder = os.path.dirname(path)
     if folder and not os.path.isdir(folder):
         os.makedirs(folder)
-    return bool(copied.save(path, "PNG"))
+    handle = open(path, "wb")
+    try:
+        handle.write(blob)
+    finally:
+        handle.close()
+    return True
+
+
+def _write_rgba(data, width, height, bpl, path):
+    if width <= 0 or height <= 0:
+        return False
+    return _write_png(path, data, width, height, bpl)
 
 
 def image_size(path):
@@ -480,24 +553,103 @@ def image_size(path):
     return img.width(), img.height()
 
 
+def _as_text(value):
+    if value is None:
+        return u""
+    if isinstance(value, type(u"")):
+        return value
+    try:
+        return value.decode("utf-8")
+    except Exception:
+        try:
+            return value.decode("mbcs")
+        except Exception:
+            try:
+                return unicode(value)
+            except Exception:
+                return u""
+
+
+def _exc_text(exc):
+    text = _as_text(exc).strip()
+    if text:
+        return text
+    return exc.__class__.__name__
+
+
+def _tr_reason(key, *args):
+    try:
+        import i18n
+        return i18n.tr(key, *args)
+    except Exception:
+        if args:
+            try:
+                return key % args
+            except Exception:
+                pass
+        return key
+
+
+def _image_read_error(path):
+    if not os.path.isfile(path):
+        return _tr_reason("ui_ue_tex_fail_missing")
+    if QtGui is None:
+        return _tr_reason("ui_ue_tex_fail_read", u"Qt")
+    reader = QtGui.QImageReader(path)
+    try:
+        reader.setDecideFormatFromContent(True)
+    except Exception:
+        pass
+    img = reader.read()
+    if img is not None and not img.isNull():
+        return u""
+    err = u""
+    try:
+        err = _as_text(reader.errorString()).strip()
+    except Exception:
+        err = u""
+    if not err:
+        err = u"unsupported or damaged"
+    return _tr_reason("ui_ue_tex_fail_read", err)
+
+
 def convert_file(src_path, kind, dst_path):
-    """转换一张贴图。base 直接复制，normal / orm 改通道后写 PNG。"""
+    """转换一张贴图。返回 (成功, 失败原因)。"""
     import shutil
+    if not dst_path:
+        return False, _tr_reason("ui_ue_tex_fail_name")
+    if not os.path.isfile(src_path):
+        return False, _tr_reason("ui_ue_tex_fail_missing")
     folder = os.path.dirname(dst_path)
     if folder and not os.path.isdir(folder):
-        os.makedirs(folder)
+        try:
+            os.makedirs(folder)
+        except Exception as exc:
+            return False, _tr_reason("ui_ue_tex_fail_mkdir", _exc_text(exc))
     if kind == "base":
-        shutil.copy2(src_path, dst_path)
-        return True
+        try:
+            shutil.copy2(src_path, dst_path)
+        except Exception as exc:
+            return False, _tr_reason("ui_ue_tex_fail_copy", _exc_text(exc))
+        if not os.path.isfile(dst_path):
+            return False, _tr_reason("ui_ue_tex_fail_copy", dst_path)
+        return True, u""
     loaded = _read_rgba(src_path)
     if not loaded:
-        return False
+        return False, _image_read_error(src_path)
     w, h, bpl, data = loaded
+    if w <= 0 or h <= 0:
+        return False, _tr_reason("ui_ue_tex_fail_empty")
     convert_buffer(data, w, h, bpl, kind)
-    # 通道图统一存 PNG，和 SD 导出一致
     root, _ext = os.path.splitext(dst_path)
     dst_path = root + ".png"
-    return _write_rgba(data, w, h, bpl, dst_path)
+    try:
+        saved = _write_rgba(data, w, h, bpl, dst_path)
+    except Exception as exc:
+        return False, _tr_reason("ui_ue_tex_fail_write", _exc_text(exc))
+    if not saved:
+        return False, _tr_reason("ui_ue_tex_fail_write", dst_path)
+    return True, u""
 
 
 if QtWidgets is not None:
@@ -597,6 +749,8 @@ if QtWidgets is not None:
 
             self.lbl_status = QtWidgets.QLabel()
             self.lbl_status.setWordWrap(True)
+            self.lbl_status.setTextInteractionFlags(
+                QtCore.Qt.TextSelectableByMouse)
             self.lbl_status.setStyleSheet("color: #c8c8c8; font-size: 11px;")
             root.addWidget(self.lbl_status)
 
@@ -835,43 +989,61 @@ if QtWidgets is not None:
             if not jobs:
                 self._warn("ui_ue_tex_none")
                 return
+            choice = self._ask_delete_originals()
+            if choice not in ("delete", "keep"):
+                return
             self._save_prefs()
             suffix = self.edit_suffix.text()
             kind_sufs = self._kind_sufs()
             ok_n = 0
             fail_n = 0
             out_dirs = []
+            converted = []
+            failed = []
             self.btn_run.setEnabled(False)
             try:
                 for i, row in enumerate(jobs):
-                    ext = ".png" if row["kind"] != "base" else row["ext"]
-                    out_dir = output_dir_for(
-                        os.path.dirname(row["path"]), suffix)
-                    if out_dir not in out_dirs:
-                        out_dirs.append(out_dir)
-                    dst = unique_out_path(
-                        out_dir, output_stem(row, kind_sufs), ext, suffix)
+                    name = row.get("file_name") or row.get("name") or "?"
                     try:
                         import i18n
                         self.lbl_status.setText(i18n.tr(
-                            "ui_ue_tex_working", i + 1, len(jobs),
-                            row.get("file_name") or row["name"]))
+                            "ui_ue_tex_working", i + 1, len(jobs), name))
                     except Exception:
-                        self.lbl_status.setText(row["name"])
+                        self.lbl_status.setText(name)
                     try:
                         QtWidgets.QApplication.processEvents()
                     except Exception:
                         pass
                     try:
-                        good = convert_file(row["path"], row["kind"], dst)
-                    except Exception:
+                        ext = ".png" if row["kind"] != "base" else row["ext"]
+                        out_dir = output_dir_for(
+                            os.path.dirname(row["path"]), suffix)
+                        if out_dir not in out_dirs:
+                            out_dirs.append(out_dir)
+                        stem = output_stem(row, kind_sufs)
+                        if not stem:
+                            good, reason, dst = (
+                                False, _tr_reason("ui_ue_tex_fail_name"), "")
+                        else:
+                            dst = unique_out_path(out_dir, stem, ext, suffix)
+                            good, reason = convert_file(
+                                row["path"], row["kind"], dst)
+                    except Exception as exc:
                         good = False
+                        reason = _exc_text(exc)
+                        dst = ""
                     if good:
                         ok_n += 1
+                        converted.append((row["path"], dst))
                     else:
                         fail_n += 1
+                        failed.append((name, reason or u"?"))
             finally:
                 self.btn_run.setEnabled(True)
+            deleted = 0
+            fail_del = 0
+            if choice == "delete":
+                deleted, fail_del = self._delete_originals(converted)
             if len(out_dirs) == 1:
                 where = out_dirs[0]
             else:
@@ -882,10 +1054,138 @@ if QtWidgets is not None:
                     where = "%d folders" % len(out_dirs)
             try:
                 import i18n
-                self.lbl_status.setText(i18n.tr(
-                    "ui_ue_tex_done", ok_n, fail_n, where))
+                msg = i18n.tr("ui_ue_tex_done", ok_n, fail_n, where)
+                if choice == "delete":
+                    msg = msg + "\n" + i18n.tr("ui_ue_tex_deleted", deleted)
+                    if fail_del:
+                        msg = msg + "\n" + i18n.tr(
+                            "ui_ue_tex_delete_fail", fail_del)
+                self.lbl_status.setText(msg)
             except Exception:
                 self.lbl_status.setText("%s ok, %s fail" % (ok_n, fail_n))
+            if failed:
+                self._show_failures(failed)
+
+        def _show_failures(self, failed):
+            lines = []
+            for name, reason in failed:
+                lines.append(u"%s\n%s" % (_as_text(name), _as_text(reason)))
+            body = u"\n\n".join(lines)
+            try:
+                print(u"Unity_MayaToUnity:\n" + body)
+            except Exception:
+                pass
+            extra = self.lbl_status.text() or u""
+            if extra:
+                self.lbl_status.setText(extra + u"\n\n" + body)
+            dlg = QtWidgets.QDialog(self)
+            dlg.setWindowFlags(
+                QtCore.Qt.Dialog
+                | QtCore.Qt.WindowTitleHint
+                | QtCore.Qt.WindowCloseButtonHint)
+            try:
+                import i18n
+                dlg.setWindowTitle(i18n.tr("ui_ue_tex_fail_title"))
+                ok_label = i18n.tr("dlg_ok")
+            except Exception:
+                dlg.setWindowTitle("Conversion failed")
+                ok_label = "OK"
+            lay = QtWidgets.QVBoxLayout(dlg)
+            edit = QtWidgets.QPlainTextEdit()
+            edit.setReadOnly(True)
+            edit.setPlainText(body)
+            edit.setMinimumSize(420, 180)
+            lay.addWidget(edit)
+            row = QtWidgets.QHBoxLayout()
+            row.addStretch(1)
+            btn = QtWidgets.QPushButton(ok_label)
+            btn.clicked.connect(dlg.accept)
+            btn.setDefault(True)
+            row.addWidget(btn)
+            lay.addLayout(row)
+            dlg.setStyleSheet(self.styleSheet())
+            dlg.resize(480, 280)
+            dlg.exec_()
+
+        def _ask_delete_originals(self):
+            """返回 delete / keep，关闭或取消则返回 None。"""
+            dlg = QtWidgets.QDialog(self)
+            dlg.setWindowFlags(
+                QtCore.Qt.Dialog
+                | QtCore.Qt.WindowTitleHint
+                | QtCore.Qt.WindowCloseButtonHint)
+            try:
+                import i18n
+                dlg.setWindowTitle(i18n.tr("ui_ue_tex_title"))
+                text = i18n.tr("ui_ue_tex_delete_ask")
+                labels = (
+                    (i18n.tr("ui_ue_tex_delete"), "delete"),
+                    (i18n.tr("ui_ue_tex_keep"), "keep"),
+                    (i18n.tr("ui_ue_tex_cancel"), None),
+                )
+            except Exception:
+                dlg.setWindowTitle("UE to Unity Textures")
+                text = "Delete the original textures?"
+                labels = (("Delete", "delete"), ("Keep", "keep"), ("Cancel", None))
+            lay = QtWidgets.QVBoxLayout(dlg)
+            lay.setContentsMargins(16, 16, 16, 12)
+            lay.setSpacing(12)
+            lbl = QtWidgets.QLabel(text)
+            lbl.setWordWrap(True)
+            lay.addWidget(lbl)
+            row = QtWidgets.QHBoxLayout()
+            row.addStretch(1)
+            choice = {"value": None}
+
+            def _pick(name):
+                choice["value"] = name
+                dlg.accept()
+
+            for lab, name in labels:
+                btn = QtWidgets.QPushButton(lab)
+                btn.setMinimumWidth(72)
+                if name is None:
+                    btn.clicked.connect(dlg.reject)
+                else:
+                    btn.clicked.connect(
+                        lambda _checked=False, picked=name: _pick(picked))
+                if name == "keep":
+                    btn.setDefault(True)
+                row.addWidget(btn)
+            lay.addLayout(row)
+            dlg.setStyleSheet(self.styleSheet())
+            dlg.adjustSize()
+            if dlg.exec_() != QtWidgets.QDialog.Accepted:
+                return None
+            return choice["value"]
+
+        def _delete_originals(self, converted):
+            """删除转换成功且与输出不是同一文件的原贴图。"""
+            deleted = 0
+            failed = 0
+            gone = set()
+            for src, dst in converted:
+                src_key = os.path.normcase(os.path.abspath(src))
+                dst_key = os.path.normcase(os.path.abspath(dst))
+                if src_key == dst_key or not os.path.isfile(src):
+                    failed += 1
+                    continue
+                try:
+                    os.remove(src)
+                except Exception:
+                    failed += 1
+                    continue
+                deleted += 1
+                gone.add(src_key)
+            if gone:
+                explicit = getattr(self, "_explicit", None)
+                if explicit:
+                    self._explicit = [
+                        p for p in explicit
+                        if os.path.normcase(os.path.abspath(p)) not in gone
+                    ] or None
+                self._reload_list()
+            return deleted, failed
 
         def dragEnterEvent(self, event):
             if self._drop_paths(event):

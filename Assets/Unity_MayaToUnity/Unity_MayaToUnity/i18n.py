@@ -522,6 +522,62 @@ _STRINGS = {
         "en": u"Done. %d converted, %d failed.\n%s",
         "zh": u"完成。成功 %d，失败 %d。\n%s",
     },
+    "ui_ue_tex_delete_ask": {
+        "en": u"Delete the original textures?\nOnly files that convert successfully will be removed.",
+        "zh": u"是否删除原贴图？\n只会删除转换成功的原文件。",
+    },
+    "ui_ue_tex_delete": {
+        "en": u"Delete",
+        "zh": u"删除",
+    },
+    "ui_ue_tex_keep": {
+        "en": u"Keep",
+        "zh": u"保留",
+    },
+    "ui_ue_tex_cancel": {
+        "en": u"Cancel",
+        "zh": u"取消",
+    },
+    "ui_ue_tex_deleted": {
+        "en": u"Deleted %d original texture(s).",
+        "zh": u"已删除 %d 张原贴图。",
+    },
+    "ui_ue_tex_delete_fail": {
+        "en": u"Could not delete %d original texture(s).",
+        "zh": u"有 %d 张原贴图未能删除。",
+    },
+    "ui_ue_tex_fail_title": {
+        "en": u"Conversion failed",
+        "zh": u"转换失败",
+    },
+    "ui_ue_tex_fail_missing": {
+        "en": u"source file is missing",
+        "zh": u"原文件不存在",
+    },
+    "ui_ue_tex_fail_read": {
+        "en": u"cannot read image: %s",
+        "zh": u"无法读取图片：%s",
+    },
+    "ui_ue_tex_fail_empty": {
+        "en": u"image has no pixels",
+        "zh": u"图片没有有效像素",
+    },
+    "ui_ue_tex_fail_mkdir": {
+        "en": u"cannot create output folder: %s",
+        "zh": u"无法创建输出目录：%s",
+    },
+    "ui_ue_tex_fail_copy": {
+        "en": u"copy failed: %s",
+        "zh": u"复制失败：%s",
+    },
+    "ui_ue_tex_fail_write": {
+        "en": u"cannot save PNG: %s",
+        "zh": u"无法保存 PNG：%s",
+    },
+    "ui_ue_tex_fail_name": {
+        "en": u"cannot build an output name",
+        "zh": u"无法生成输出文件名",
+    },
     "ui_ue_tex_locate": {
         "en": u"Show in Explorer",
         "zh": u"定位到贴图",
