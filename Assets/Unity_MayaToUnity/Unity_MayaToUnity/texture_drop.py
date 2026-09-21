@@ -1073,6 +1073,179 @@ def _viewport_cursor_xy(panel=None):
         return None
 
 
+def _parse_face_component(hit):
+    """hitTest 若已带面组件，返回 (shape, face_id)。"""
+    if not hit or ".f[" not in hit:
+        return None
+    node, rest = hit.split(".f[", 1)
+    digits = []
+    for ch in rest:
+        if ch.isdigit():
+            digits.append(ch)
+        else:
+            break
+    if not digits or not cmds.objExists(node):
+        return None
+    if cmds.nodeType(node) != "mesh":
+        return None
+    long_name = (cmds.ls(node, long=True) or [node])[0]
+    return long_name, int("".join(digits))
+
+
+def _mesh_shapes_of(hit):
+    if not hit or not cmds.objExists(hit.split(".")[0]):
+        return []
+    node = hit.split(".")[0]
+    ntype = cmds.nodeType(node)
+    if ntype == "mesh":
+        return cmds.ls(node, long=True) or [node]
+    if ntype == "transform":
+        return cmds.listRelatives(
+            node, shapes=True, noIntermediate=True,
+            fullPath=True, type="mesh") or []
+    return []
+
+
+def _dag_path(node):
+    sel = om.MSelectionList()
+    sel.add(node)
+    dag = om.MDagPath()
+    sel.getDagPath(0, dag)
+    if dag.hasFn(om.MFn.kTransform):
+        try:
+            dag.extendToShape()
+        except Exception:
+            pass
+    return dag
+
+
+def _ray_hit_face(shape, x, y):
+    """从视口像素发射线，返回 (face_id, distance)，打不中则 None。"""
+    try:
+        view = omui.M3dView.active3dView()
+        ray_source = om.MPoint()
+        ray_dir = om.MVector()
+        view.viewToWorld(int(x), int(y), ray_source, ray_dir)
+        dag = _dag_path(shape)
+        if not dag.hasFn(om.MFn.kMesh):
+            return None
+        fn = om.MFnMesh(dag)
+        src = om.MFloatPoint(ray_source.x, ray_source.y, ray_source.z)
+        direction = om.MFloatVector(ray_dir.x, ray_dir.y, ray_dir.z)
+        hit_point = om.MFloatPoint()
+        u_param = om.MScriptUtil()
+        u_param.createFromDouble(0.0)
+        p_param = u_param.asFloatPtr()
+        u_face = om.MScriptUtil()
+        u_face.createFromInt(0)
+        p_face = u_face.asIntPtr()
+        u_tri = om.MScriptUtil()
+        u_tri.createFromInt(0)
+        p_tri = u_tri.asIntPtr()
+        u_b1 = om.MScriptUtil()
+        u_b1.createFromDouble(0.0)
+        p_b1 = u_b1.asFloatPtr()
+        u_b2 = om.MScriptUtil()
+        u_b2.createFromDouble(0.0)
+        p_b2 = u_b2.asFloatPtr()
+        hit = fn.closestIntersection(
+            src, direction, None, None, False,
+            om.MSpace.kWorld, 1.0e6, False, None,
+            hit_point, p_param, p_face, p_tri, p_b1, p_b2)
+        if not hit:
+            return None
+        return om.MScriptUtil.getInt(p_face), om.MScriptUtil.getFloat(p_param)
+    except Exception as exc:
+        debug.log("texture_drop raycast failed (%s): %s" % (shape, exc))
+        return None
+
+
+def _surface_from_shader_obj(mobj):
+    if mobj is None or mobj.isNull():
+        return None
+    fn = om.MFnDependencyNode(mobj)
+    nodes = []
+    try:
+        uid = fn.uuid().asString()
+        if uid:
+            nodes = cmds.ls(uid, type="shadingEngine") or []
+    except Exception:
+        nodes = []
+    if not nodes:
+        nodes = cmds.ls(fn.name(), type="shadingEngine") or []
+    for sg in nodes:
+        mat = _shader_from_node(sg)
+        if mat:
+            return mat
+    return None
+
+
+def _material_for_mesh_face(shape, face_id):
+    """这个面所属的表面材质。同一模型多个材质时按面区分。"""
+    try:
+        dag = _dag_path(shape)
+        if not dag.hasFn(om.MFn.kMesh):
+            return None
+        fn = om.MFnMesh(dag)
+        if face_id < 0 or face_id >= fn.numPolygons():
+            return None
+        shaders = om.MObjectArray()
+        indices = om.MIntArray()
+        fn.getConnectedShaders(dag.instanceNumber(), shaders, indices)
+        if face_id >= indices.length():
+            return None
+        slot = indices[face_id]
+        if slot < 0 or slot >= shaders.length():
+            return None
+        return _surface_from_shader_obj(shaders[slot])
+    except Exception as exc:
+        debug.log("texture_drop face material failed: %s" % exc)
+        return None
+
+
+def _material_under_cursor(control_name=None):
+    """视口光标下那个面的材质。打不中则 None。"""
+    panel = _model_panel_from_control(control_name)
+    xy = _viewport_cursor_xy(panel)
+    if xy is None:
+        return None
+    x, y = xy
+    shapes = []
+    if panel:
+        try:
+            hits = cmds.hitTest(panel, x, y) or []
+        except Exception as exc:
+            debug.log("hitTest failed: %s" % exc)
+            hits = []
+        for h in hits:
+            parsed = _parse_face_component(h)
+            if parsed:
+                mat = _material_for_mesh_face(parsed[0], parsed[1])
+                if mat:
+                    debug.log(
+                        "texture_drop face %s.f[%s] -> %s"
+                        % (parsed[0], parsed[1], mat))
+                    return mat
+            for sh in _mesh_shapes_of(h):
+                if sh not in shapes:
+                    shapes.append(sh)
+    best = None
+    for sh in shapes:
+        got = _ray_hit_face(sh, x, y)
+        if not got:
+            continue
+        face_id, dist = got
+        if best is None or dist < best[0]:
+            best = (dist, sh, face_id)
+    if not best:
+        return None
+    mat = _material_for_mesh_face(best[1], best[2])
+    debug.log(
+        "texture_drop ray %s.f[%s] -> %s"
+        % (best[1], best[2], mat))
+    return mat
+
+
 def _mesh_under_cursor(control_name=None):
     """视口光标下的 mesh/transform（不永久改选择）。"""
     panel = _model_panel_from_control(control_name)
@@ -1138,10 +1311,12 @@ def _resolve_target(control_name):
     属性编辑器：沿用 AE 焦点 + 控件属性。
     """
     if _in_model_panel(control_name):
-        hit = _mesh_under_cursor(control_name)
-        mat = _shader_from_node(hit) if hit else None
+        mat = _material_under_cursor(control_name)
+        if not mat:
+            hit = _mesh_under_cursor(control_name)
+            mat = _shader_from_node(hit) if hit else None
         debug.log(
-            "texture_drop viewport hit=%s mat=%s" % (hit, mat))
+            "texture_drop viewport mat=%s" % mat)
         return mat, None
 
     mat = _ae_focus_node()
