@@ -503,7 +503,7 @@ def _make_item(transform, shape, prefab_name, used, mesh_name=None):
     }
 
 
-def export(output_dir, selection=None, scene_name="MayaToUnity"):
+def export(output_dir, selection=None, scene_name="MayaToUnity", progress_cb=None):
     """导出整个场景（或选中对象）为 Unity 项目资源。
 
     返回生成的文件路径列表；没有可导出的网格时返回 None。
@@ -654,8 +654,19 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
         cmds.refresh(suspend=True)
     except Exception:
         pass
+
+    def _report_progress(done, total):
+        if progress_cb is None:
+            return
+        try:
+            progress_cb(done, total)
+        except Exception:
+            pass
+
+    total_steps = len(export_items) + 1
+    _report_progress(0, total_steps)
     try:
-        for item in export_items:
+        for index, item in enumerate(export_items):
             t = item["transform"]
             shape = item["shape"]
             prefab_name = item["prefab_name"]
@@ -713,6 +724,7 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
 
             prefab_guid_by_transform[t] = prefab_guid
             generated.append(prefab_path)
+            _report_progress(index + 1, total_steps)
     finally:
         try:
             cmds.refresh(suspend=False)
@@ -980,5 +992,6 @@ def export(output_dir, selection=None, scene_name="MayaToUnity"):
     generated.append(report_path)
 
     debug.log("Export done, %d files" % len(generated))
+    _report_progress(total_steps, total_steps)
 
     return generated

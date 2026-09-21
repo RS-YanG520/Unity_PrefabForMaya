@@ -76,6 +76,35 @@ def _hline():
     return line
 
 
+class _InstMarkDelegate(QtWidgets.QStyledItemDelegate):
+    """实例化列：画一块固定大小的色块，避免字符方块显得太小。"""
+
+    _W = 22
+    _H = 14
+
+    def paint(self, painter, option, index):
+        flag = index.data(QtCore.Qt.UserRole + 1)
+        if flag is None:
+            QtWidgets.QStyledItemDelegate.paint(self, painter, option, index)
+            return
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        opt.text = ""
+        widget = opt.widget
+        style = widget.style() if widget is not None else QtWidgets.QApplication.style()
+        style.drawControl(
+            QtWidgets.QStyle.CE_ItemViewItem, opt, painter, widget)
+        color = QtGui.QColor("#3dcf5a" if flag else "#e05555")
+        rect = option.rect
+        box = QtCore.QRect(0, 0, self._W, self._H)
+        box.moveCenter(rect.center())
+        painter.save()
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(color)
+        painter.drawRect(box)
+        painter.restore()
+
+
 class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     """GS Toolbox 风格窄工具条。"""
 
@@ -173,6 +202,17 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         path_row.addLayout(side_col)
         self.body_lay.addLayout(path_row)
 
+        self.export_progress = QtWidgets.QProgressBar()
+        self.export_progress.setTextVisible(False)
+        self.export_progress.setFixedHeight(10)
+        self.export_progress.setRange(0, 1)
+        self.export_progress.setValue(0)
+        self.export_progress.setStyleSheet(
+            "QProgressBar { background: #2a2a2a; border: none; }"
+            "QProgressBar::chunk { background: #3b9eff; }"
+        )
+        self.body_lay.addWidget(self.export_progress)
+
         self.btn_diagnose = self._btn(self._on_diagnose)
         self.body_lay.addWidget(self.btn_diagnose)
 
@@ -267,7 +307,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 pass
         self.tbl_meshes.setColumnWidth(0, 90)
         self.tbl_meshes.setColumnWidth(1, 44)
-        self.tbl_meshes.setColumnWidth(2, 48)
+        self.tbl_meshes.setColumnWidth(2, 56)
         self.tbl_meshes.setColumnWidth(3, 64)
         self.tbl_meshes.setColumnWidth(4, 90)
         self.tbl_meshes.setColumnWidth(5, 64)
@@ -279,6 +319,17 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self._cam_icon = None
         self._sort_col = 0
         self._sort_asc = True
+        self.tbl_meshes.setItemDelegateForColumn(
+            2, _InstMarkDelegate(self.tbl_meshes))
+        vheader = self.tbl_meshes.verticalHeader()
+        vheader.setDefaultSectionSize(26)
+        try:
+            vheader.setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        except Exception:
+            try:
+                vheader.setResizeMode(QtWidgets.QHeaderView.Fixed)
+            except Exception:
+                pass
         self.tbl_meshes.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.tbl_meshes.customContextMenuRequested.connect(
             self._on_mesh_context_menu)
@@ -617,15 +668,23 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 return
 
             def _run():
+                self.btn_export.setEnabled(False)
+                self._set_export_progress(0, 1)
                 try:
                     generated = pkg.export(
-                        out, selection=sel, scene_name="MayaToUnity")
+                        out, selection=sel, scene_name="MayaToUnity",
+                        progress_cb=self._set_export_progress)
                 except Exception as exc:
+                    self._set_export_progress(0, 1)
                     cmds.warning(
                         "Unity_MayaToUnity export failed: %s" % exc)
                     return
+                finally:
+                    self.btn_export.setEnabled(True)
                 if not generated:
+                    self._set_export_progress(0, 1)
                     return
+                self._set_export_progress(1, 1)
                 msg = i18n.tr(
                     "dlg_export_msg", len(generated), out)
                 ok = i18n.tr("dlg_ok")
@@ -651,6 +710,22 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 _run()
 
         self._defer(_go)
+
+    def _set_export_progress(self, done, total):
+        total = int(total or 1)
+        if total < 1:
+            total = 1
+        done = int(done or 0)
+        if done < 0:
+            done = 0
+        if done > total:
+            done = total
+        try:
+            self.export_progress.setRange(0, total)
+            self.export_progress.setValue(done)
+            QtWidgets.QApplication.processEvents()
+        except Exception:
+            pass
 
     def set_diagnose_result(self, result):
         """刷新底部汇总与模型/灯光/摄影机列表。"""
@@ -993,7 +1068,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             base_name = row.get("base_name") or ""
             if not is_inst or not base_name:
                 base_name = none_base
-            inst_item = QtWidgets.QTableWidgetItem(u"■")
+            inst_item = QtWidgets.QTableWidgetItem(u"")
             inst_item.setTextAlignment(
                 QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
             if is_inst and green_brush is not None:
@@ -1043,7 +1118,10 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 item.setToolTip(tip)
                 item.setData(QtCore.Qt.UserRole + 2, "mesh")
                 self.tbl_meshes.setItem(i, col, item)
-        self.tbl_meshes.resizeRowsToContents()
+        try:
+            self.tbl_meshes.verticalHeader().setDefaultSectionSize(26)
+        except Exception:
+            pass
 
     def _selected_table_rows(self):
         """当前表格选中的行号（去重排序，跳过分隔条）。"""
