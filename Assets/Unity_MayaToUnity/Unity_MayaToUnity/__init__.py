@@ -138,6 +138,29 @@ def set_texture_drop(enabled):
     texture_drop.set_enabled(enabled)
 
 
+def _kill_toolbox_selection_jobs():
+    """重载前卸掉旧窗口的选中监听，避免关掉的列表还被 select 回调到。"""
+    try:
+        jobs = cmds.scriptJob(listJobs=True) or []
+    except Exception:
+        return
+    for line in jobs:
+        text = "%s" % line
+        if "SelectionChanged" not in text:
+            continue
+        if "_on_maya_selection_changed" not in text:
+            continue
+        try:
+            jid = int(text.split(":", 1)[0].strip())
+        except Exception:
+            continue
+        try:
+            if cmds.scriptJob(exists=jid):
+                cmds.scriptJob(kill=jid, force=True)
+        except Exception:
+            pass
+
+
 def reload_modules():
     """强制重载本包子模块（改完代码后在工具窗口点 Reload，或脚本里调用）。
 
@@ -145,6 +168,7 @@ def reload_modules():
     否则会触发 Parent module not found 警告。
     """
     import sys
+    _kill_toolbox_selection_jobs()
     try:
         texture_drop.uninstall()
     except Exception:

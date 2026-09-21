@@ -626,6 +626,126 @@ _STRINGS = {
         "en": u"Selection Only",
         "zh": u"仅导出选中",
     },
+    "ui_btn_make_inst": {
+        "en": u"Make Instances",
+        "zh": u"转为实例",
+    },
+    "ui_make_inst_tip": {
+        "en": u"Compare vertices, faces and UVs of the selection. If they match, turn them into instances of the first mesh.",
+        "zh": u"对比所选模型的顶点、面和 UV。一致时，以第一个模型为基准转成实例。",
+    },
+    "ui_btn_fuzzy_inst": {
+        "en": u"Fuzzy Instance",
+        "zh": u"模糊实例化",
+    },
+    "ui_fuzzy_thr": {
+        "en": u"Threshold",
+        "zh": u"阈值",
+    },
+    "ui_fuzzy_tip": {
+        "en": u"First selected mesh is the source. Later meshes become its instances when similarity >= threshold (0-100). Geometry only; UVs follow the source.",
+        "zh": u"先选中的是源模型，后面选中的按相似度阈值（0-100）替换为它的实例。只比几何，UV 会跟源模型走。",
+    },
+    "ui_fuzzy_head": {
+        "en": u"Source: %s\nThreshold: %d",
+        "zh": u"源模型：%s\n阈值：%d",
+    },
+    "ui_fuzzy_summary": {
+        "en": u"Converted %d, already %d, skipped %d.",
+        "zh": u"已转换 %d，已是实例 %d，跳过 %d。",
+    },
+    "ui_fuzzy_skip_head": {
+        "en": u"Skipped (below threshold or incompatible):",
+        "zh": u"未达阈值或拓扑不兼容，已跳过：",
+    },
+    "ui_fuzzy_skip_item": {
+        "en": u"%s  similarity %.1f",
+        "zh": u"%s  相似度 %.1f",
+    },
+    "ui_fuzzy_score_low": {
+        "en": u"similarity %.1f < threshold %d",
+        "zh": u"相似度 %.1f < 阈值 %d",
+    },
+    "ui_fuzzy_topo": {
+        "en": u"topology differs (verts %d/%d, faces %d/%d)",
+        "zh": u"拓扑不同（顶点 %d/%d，面 %d/%d）",
+    },
+    "ui_fuzzy_ok": {
+        "en": u"Turned %d mesh(es) into fuzzy instances of \"%s\" (threshold %d).",
+        "zh": u"已将 %d 个模型转为「%s」的实例（阈值 %d）。",
+    },
+    "ui_make_inst_need": {
+        "en": u"Select at least two meshes.",
+        "zh": u"请先选择至少两个模型。",
+    },
+    "ui_make_inst_title": {
+        "en": u"Cannot make instances",
+        "zh": u"无法转为实例",
+    },
+    "ui_make_inst_head": {
+        "en": u"Base: %s\nThese meshes do not match, so nothing was changed:",
+        "zh": u"基准模型：%s\n以下模型与基准不一致，未做转换：",
+    },
+    "ui_make_inst_verts": {
+        "en": u"vertex count %d ≠ %d",
+        "zh": u"顶点数 %d ≠ %d",
+    },
+    "ui_make_inst_faces": {
+        "en": u"face count %d ≠ %d",
+        "zh": u"面数 %d ≠ %d",
+    },
+    "ui_make_inst_fverts": {
+        "en": u"face-vertex count %d ≠ %d",
+        "zh": u"面顶点总数 %d ≠ %d",
+    },
+    "ui_make_inst_points": {
+        "en": u"vertex positions differ (%d verts, first at #%d)",
+        "zh": u"顶点位置不一致（共 %d 个，第 %d 个起）",
+    },
+    "ui_make_inst_marked": {
+        "en": u"Mismatched vertices are selected in the viewport (hidden when this dialog closes).",
+        "zh": u"已在视口选中不一致的顶点；关闭本窗口后会自动隐藏顶点显示。",
+    },
+    "ui_make_inst_uv_sets": {
+        "en": u"UV set count %d ≠ %d",
+        "zh": u"UV 套数 %d ≠ %d",
+    },
+    "ui_make_inst_uv_len": {
+        "en": u"UV%d (%s / %s) count %d ≠ %d",
+        "zh": u"UV%d（%s / %s）点数 %d ≠ %d",
+    },
+    "ui_make_inst_uv": {
+        "en": u"UV%d (%s / %s) coordinates differ (point %d)",
+        "zh": u"UV%d（%s / %s）坐标不一致（第 %d 个点）",
+    },
+    "ui_make_inst_shapes": {
+        "en": u"has more than one mesh shape",
+        "zh": u"含有多个网格形状，无法自动实例化",
+    },
+    "ui_make_inst_ok": {
+        "en": u"Turned %d mesh(es) into instances of \"%s\".",
+        "zh": u"已将 %d 个模型转为「%s」的实例。",
+    },
+    "ui_make_inst_ok_title": {
+        "en": u"Make Instances",
+        "zh": u"转为实例",
+    },
+    "ui_make_inst_already": {
+        "en": u"The selected meshes are already instances of \"%s\".",
+        "zh": u"所选模型已经是「%s」的实例，无需转换。",
+    },
+    "ui_make_inst_fail": {
+        "en": u"Failed: %s",
+        "zh": u"转换失败：%s",
+    },
+    "ui_locate_row_none": {
+        "en": u"Nothing is selected in the viewport.",
+        "zh": u"视口里没有选中模型。",
+    },
+    "ui_locate_row_miss": {
+        "en": u"The viewport selection is not in the diagnosis list.",
+        "zh": u"诊断列表里没有当前选中的模型。",
+    },
     "ui_warn_no_sel": {
         "en": u"Unity_MayaToUnity: Selection Only is on, but nothing is selected.",
         "zh": u"Unity_MayaToUnity: 已勾选仅导出选中，但当前没有选中物体。",

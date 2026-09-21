@@ -13,11 +13,11 @@ import maya.OpenMayaUI as omui
 
 try:
     from PySide2 import QtCore, QtWidgets, QtGui
-    from shiboken2 import wrapInstance
+    from shiboken2 import isValid, wrapInstance
 except ImportError:
     from PySide import QtCore, QtGui
     from PySide import QtGui as QtWidgets
-    from shiboken import wrapInstance
+    from shiboken import isValid, wrapInstance
 
 try:
     from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
@@ -32,6 +32,8 @@ WINDOW_OBJECT = "UnityMayaToUnityToolbox"
 WINDOW_TITLE = "Unity MayaToUnity"
 WORKSPACE_CONTROL = WINDOW_OBJECT + "WorkspaceControl"
 _EXPORT_DIR_VAR = "mtu_export_dir"
+_FUZZY_THR_VAR = "mtu_fuzzy_inst_threshold"
+_FUZZY_THR_DEFAULT = 90
 # 接近 GS Toolbox 的窄条宽度
 _DEFAULT_WIDTH = 210
 _DEFAULT_HEIGHT = 520
@@ -50,6 +52,39 @@ def _maya_main_window():
     except NameError:
         ptr = int(ptr)
     return wrapInstance(ptr, QtWidgets.QWidget)
+
+
+def _widget_alive(widget):
+    """Qt 控件的 C++ 对象是否还在（关掉/重载后 Python 壳还在，但控件已销毁）。"""
+    if widget is None:
+        return False
+    try:
+        return bool(isValid(widget))
+    except Exception:
+        return False
+
+
+def _kill_stale_selection_jobs():
+    """清掉重载后仍挂在已销毁窗口上的 SelectionChanged 监听。"""
+    try:
+        jobs = cmds.scriptJob(listJobs=True) or []
+    except Exception:
+        return
+    for line in jobs:
+        text = "%s" % line
+        if "SelectionChanged" not in text:
+            continue
+        if "_on_maya_selection_changed" not in text:
+            continue
+        try:
+            jid = int(text.split(":", 1)[0].strip())
+        except Exception:
+            continue
+        try:
+            if cmds.scriptJob(exists=jid):
+                cmds.scriptJob(kill=jid, force=True)
+        except Exception:
+            pass
 
 
 def _delete_workspace_control():
@@ -224,9 +259,12 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         self.body_lay.addWidget(_hline())
 
+        chk_col = QtWidgets.QVBoxLayout()
+        chk_col.setContentsMargins(0, 0, 0, 0)
+        chk_col.setSpacing(2)
         self.chk_sel_only = QtWidgets.QCheckBox()
         self.chk_sel_only.setChecked(False)
-        self.body_lay.addWidget(self.chk_sel_only)
+        chk_col.addWidget(self.chk_sel_only)
 
         self.chk_texdrop = QtWidgets.QCheckBox()
         try:
@@ -235,7 +273,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         except Exception:
             self.chk_texdrop.setChecked(True)
         self.chk_texdrop.toggled.connect(self._on_texdrop)
-        self.body_lay.addWidget(self.chk_texdrop)
+        chk_col.addWidget(self.chk_texdrop)
 
         self.chk_tex_siblings = QtWidgets.QCheckBox()
         try:
@@ -244,7 +282,49 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         except Exception:
             self.chk_tex_siblings.setChecked(True)
         self.chk_tex_siblings.toggled.connect(self._on_tex_siblings)
-        self.body_lay.addWidget(self.chk_tex_siblings)
+        chk_col.addWidget(self.chk_tex_siblings)
+
+        self.btn_make_inst = QtWidgets.QPushButton()
+        self.btn_make_inst.setMinimumWidth(88)
+        self.btn_make_inst.setMinimumHeight(_BTN_H)
+        self.btn_make_inst.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.btn_make_inst.clicked.connect(self._on_make_instances)
+
+        self.lbl_fuzzy_thr = QtWidgets.QLabel()
+        self.spin_fuzzy_thr = QtWidgets.QSpinBox()
+        self.spin_fuzzy_thr.setRange(0, 100)
+        self.spin_fuzzy_thr.setSingleStep(1)
+        self.spin_fuzzy_thr.setFixedWidth(52)
+        self.spin_fuzzy_thr.setValue(self._load_fuzzy_threshold())
+        self.spin_fuzzy_thr.valueChanged.connect(self._save_fuzzy_threshold)
+        thr_row = QtWidgets.QHBoxLayout()
+        thr_row.setContentsMargins(0, 0, 0, 0)
+        thr_row.setSpacing(4)
+        thr_row.addWidget(self.lbl_fuzzy_thr)
+        thr_row.addWidget(self.spin_fuzzy_thr, 1)
+
+        self.btn_fuzzy_inst = QtWidgets.QPushButton()
+        self.btn_fuzzy_inst.setMinimumWidth(88)
+        self.btn_fuzzy_inst.setMinimumHeight(_BTN_H)
+        self.btn_fuzzy_inst.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.btn_fuzzy_inst.clicked.connect(self._on_fuzzy_instances)
+
+        inst_col = QtWidgets.QVBoxLayout()
+        inst_col.setContentsMargins(0, 0, 0, 0)
+        inst_col.setSpacing(4)
+        inst_col.addWidget(self.btn_make_inst)
+        inst_col.addLayout(thr_row)
+        inst_col.addWidget(self.btn_fuzzy_inst)
+        inst_col.addStretch(1)
+
+        opt_row = QtWidgets.QHBoxLayout()
+        opt_row.setContentsMargins(0, 0, 0, 0)
+        opt_row.setSpacing(6)
+        opt_row.addLayout(chk_col, 1)
+        opt_row.addLayout(inst_col)
+        self.body_lay.addLayout(opt_row)
 
         self.btn_tex_rules = self._btn(self._on_tex_rules)
         self.btn_tex_rules.setMinimumHeight(_BTN_H)
@@ -337,6 +417,10 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.tbl_meshes.cellClicked.connect(self._on_mesh_cell_clicked)
         self.tbl_meshes.cellDoubleClicked.connect(
             self._on_mesh_cell_double_clicked)
+        self._locate_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_F), self)
+        self._locate_shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+        self._locate_shortcut.activated.connect(self._on_locate_selection_key)
         root.addWidget(self.tbl_meshes, 1)
 
     def _btn(self, slot):
@@ -381,6 +465,27 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             return
         try:
             cmds.optionVar(sv=(_EXPORT_DIR_VAR, path))
+        except Exception:
+            pass
+
+    def _load_fuzzy_threshold(self):
+        try:
+            if cmds.optionVar(exists=_FUZZY_THR_VAR):
+                val = int(cmds.optionVar(q=_FUZZY_THR_VAR))
+                if 0 <= val <= 100:
+                    return val
+        except Exception:
+            pass
+        return _FUZZY_THR_DEFAULT
+
+    def _save_fuzzy_threshold(self, value=None):
+        if value is None:
+            try:
+                value = self.spin_fuzzy_thr.value()
+            except Exception:
+                value = _FUZZY_THR_DEFAULT
+        try:
+            cmds.optionVar(iv=(_FUZZY_THR_VAR, int(value)))
         except Exception:
             pass
 
@@ -560,6 +665,13 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.chk_texdrop.setToolTip(i18n.tr("ui_texdrop_tip"))
         self.chk_tex_siblings.setText(i18n.tr("ui_texdrop_siblings"))
         self.chk_tex_siblings.setToolTip(i18n.tr("ui_texdrop_siblings_tip"))
+        self.btn_make_inst.setText(i18n.tr("ui_btn_make_inst"))
+        self.btn_make_inst.setToolTip(i18n.tr("ui_make_inst_tip"))
+        self.lbl_fuzzy_thr.setText(i18n.tr("ui_fuzzy_thr"))
+        self.lbl_fuzzy_thr.setToolTip(i18n.tr("ui_fuzzy_tip"))
+        self.spin_fuzzy_thr.setToolTip(i18n.tr("ui_fuzzy_tip"))
+        self.btn_fuzzy_inst.setText(i18n.tr("ui_btn_fuzzy_inst"))
+        self.btn_fuzzy_inst.setToolTip(i18n.tr("ui_fuzzy_tip"))
         self.btn_tex_rules.setText(i18n.tr("ui_texdrop_rules_btn"))
         self.btn_tex_rules.setToolTip(i18n.tr("ui_texdrop_rules_tip"))
         self.lbl_status.setText(i18n.tr("ui_status_hint"))
@@ -1164,6 +1276,7 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def _install_selection_job(self):
         """监听 Maya 选择变化，同步诊断表高亮。"""
         self._kill_selection_job()
+        _kill_stale_selection_jobs()
         try:
             self._sel_job = cmds.scriptJob(
                 event=["SelectionChanged", self._on_maya_selection_changed],
@@ -1185,12 +1298,21 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self._sel_job = None
 
     def _on_maya_selection_changed(self, *_args):
+        if not _widget_alive(getattr(self, "tbl_meshes", None)):
+            self._kill_selection_job()
+            return
         if getattr(self, "_syncing_to_maya", False):
             return
         if not (self._mesh_rows or self._light_rows or self._camera_rows):
             return
         # 延后一帧，避免与其它 UI 刷新打架
         def _go():
+            if not _widget_alive(getattr(self, "tbl_meshes", None)):
+                try:
+                    self._kill_selection_job()
+                except Exception:
+                    pass
+                return
             if getattr(self, "_syncing_to_maya", False):
                 return
             self._sync_table_from_maya_selection()
@@ -1242,6 +1364,8 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def _sync_table_from_maya_selection(self):
         """大纲 / 视口选中 → 诊断表同步高亮。"""
+        if not _widget_alive(getattr(self, "tbl_meshes", None)):
+            return
         if getattr(self, "_syncing_from_maya", False):
             return
         path_set = self._maya_selected_transforms()
@@ -1276,6 +1400,52 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         finally:
             self._syncing_from_maya = False
         self._sync_size_map_highlight(path_set)
+
+    def _on_locate_selection_key(self):
+        """诊断窗口按 F：滚到视口当前选中模型的那一行。"""
+        focus = QtWidgets.QApplication.focusWidget()
+        if isinstance(focus, (
+                QtWidgets.QLineEdit,
+                QtWidgets.QPlainTextEdit,
+                QtWidgets.QAbstractSpinBox)):
+            try:
+                focus.insert(u"f")
+            except Exception:
+                pass
+            return
+        self._locate_selection_in_table()
+
+    def _locate_selection_in_table(self):
+        if not (self._mesh_rows or self._light_rows or self._camera_rows):
+            self.lbl_status.setText(i18n.tr("ui_diag_placeholder"))
+            return
+        path_set = self._maya_selected_transforms()
+        if not path_set:
+            self.lbl_status.setText(i18n.tr("ui_locate_row_none"))
+            return
+        self._sync_table_from_maya_selection()
+        entries = self._table_entries()
+        first = None
+        for i, entry in enumerate(entries):
+            if entry.get("kind") == "separator":
+                continue
+            if not self._entry_matches_paths(entry, path_set):
+                continue
+            first = self.tbl_meshes.item(i, 0)
+            if first is not None:
+                break
+        if first is None:
+            self.lbl_status.setText(i18n.tr("ui_locate_row_miss"))
+            return
+        try:
+            self.tbl_meshes.setFocus()
+            self.tbl_meshes.scrollToItem(
+                first, QtWidgets.QAbstractItemView.PositionAtCenter)
+        except Exception:
+            pass
+        name = first.text() or ""
+        if name:
+            self.lbl_status.setText(name)
 
     def closeEvent(self, event):
         try:
@@ -1635,8 +1805,11 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def _mesh_shapes(self, transform):
         shapes = cmds.listRelatives(
-            transform, shapes=True, noIntermediate=True, fullPath=True) or []
-        return [s for s in shapes if cmds.nodeType(s) == "mesh"]
+            transform, shapes=True, noIntermediate=True,
+            fullPath=True, type="mesh") or []
+        if isinstance(shapes, (list, tuple)):
+            return list(shapes)
+        return [shapes] if shapes else []
 
     def _prompt_rename_uv(self, data_rows, uv_index):
         """弹出输入框，重命名选中模型的 UV0 或 UV1。
@@ -2137,6 +2310,256 @@ class ToolboxWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self._reveal_in_outliner()
         # cmds.select 已会高亮并刷新属性编辑器，勿再调无参的 updateAE
 
+    def _on_make_instances(self):
+        """把选中的模型收成实例。几何或 UV 不一致则只提示、不改场景。"""
+        def _go():
+            import instance_detector
+            try:
+                result = instance_detector.convert_selection_to_instances()
+            except Exception as exc:
+                detail = instance_detector._exc_text(exc)
+                cmds.warning(to_maya_ui(
+                    u"Unity_MayaToUnity: make instances failed: %s" % detail))
+                return
+            if result.get("error") == "need_two":
+                cmds.warning(i18n.tr("ui_make_inst_need"))
+                self.lbl_status.setText(i18n.tr("ui_make_inst_need"))
+                return
+            if result.get("error") == "mismatch":
+                self._show_instance_mismatch(result)
+                return
+            if not result.get("ok"):
+                detail = result.get("detail") or result.get("error") or ""
+                text = i18n.tr("ui_make_inst_fail", detail)
+                cmds.warning(text)
+                self.lbl_status.setText(text)
+                return
+            base = result.get("base") or ""
+            if result.get("converted"):
+                text = i18n.tr(
+                    "ui_make_inst_ok", result.get("converted") or 0, base)
+            else:
+                text = i18n.tr("ui_make_inst_already", base)
+            print(to_maya_ui(text))
+            self.lbl_status.setText(text)
+            try:
+                cmds.confirmDialog(
+                    title=i18n.tr("ui_make_inst_ok_title"),
+                    message=text,
+                    button=[i18n.tr("dlg_ok")],
+                    defaultButton=i18n.tr("dlg_ok"),
+                )
+            except Exception:
+                pass
+            if self._mesh_rows:
+                self._on_diagnose()
+
+        self._defer(_go)
+
+    def _on_fuzzy_instances(self):
+        """按相似度阈值，把后续选中模型替换为第一个模型的实例。"""
+        def _go():
+            import instance_detector
+            thr = int(self.spin_fuzzy_thr.value())
+            self._save_fuzzy_threshold(thr)
+            try:
+                result = instance_detector.convert_selection_to_fuzzy_instances(
+                    threshold=thr)
+            except Exception as exc:
+                detail = instance_detector._exc_text(exc)
+                cmds.warning(to_maya_ui(
+                    u"Unity_MayaToUnity: fuzzy instances failed: %s" % detail))
+                return
+            if result.get("error") == "need_two":
+                cmds.warning(i18n.tr("ui_make_inst_need"))
+                self.lbl_status.setText(i18n.tr("ui_make_inst_need"))
+                return
+            if not result.get("ok"):
+                detail = result.get("detail") or result.get("error") or ""
+                text = i18n.tr("ui_make_inst_fail", detail)
+                cmds.warning(text)
+                self.lbl_status.setText(text)
+                return
+            self._show_fuzzy_instance_result(result)
+            if result.get("converted") and self._mesh_rows:
+                self._on_diagnose()
+
+        self._defer(_go)
+
+    def _format_instance_reason(self, reason):
+        code = reason.get("code")
+        if code == "verts":
+            return i18n.tr("ui_make_inst_verts", reason.get("a") or 0, reason.get("b") or 0)
+        if code == "faces":
+            return i18n.tr("ui_make_inst_faces", reason.get("a") or 0, reason.get("b") or 0)
+        if code == "fverts":
+            return i18n.tr("ui_make_inst_fverts", reason.get("a") or 0, reason.get("b") or 0)
+        if code == "points":
+            return i18n.tr(
+                "ui_make_inst_points",
+                reason.get("count") or 1,
+                (reason.get("index") or 0) + 1,
+            )
+        if code == "score":
+            return i18n.tr(
+                "ui_fuzzy_score_low",
+                reason.get("score") or 0,
+                reason.get("threshold") or 0,
+            )
+        if code == "topo":
+            return i18n.tr(
+                "ui_fuzzy_topo",
+                reason.get("va") or 0,
+                reason.get("vb") or 0,
+                reason.get("fa") or 0,
+                reason.get("fb") or 0,
+            )
+        if code == "uv_sets":
+            return i18n.tr(
+                "ui_make_inst_uv_sets", reason.get("a") or 0, reason.get("b") or 0)
+        if code == "uv_len":
+            return i18n.tr(
+                "ui_make_inst_uv_len",
+                (reason.get("set") or 0) + 1,
+                reason.get("name_a") or "",
+                reason.get("name_b") or "",
+                reason.get("a") or 0,
+                reason.get("b") or 0,
+            )
+        if code == "uv":
+            return i18n.tr(
+                "ui_make_inst_uv",
+                (reason.get("set") or 0) + 1,
+                reason.get("name_a") or "",
+                reason.get("name_b") or "",
+                (reason.get("index") or 0) + 1,
+            )
+        if code == "shapes":
+            return i18n.tr("ui_make_inst_shapes")
+        if code == "read":
+            return i18n.tr("ui_make_inst_fail", reason.get("detail") or "")
+        return code or ""
+
+    def _show_instance_mismatch(self, result):
+        lines = [i18n.tr("ui_make_inst_head", result.get("base") or "")]
+        for item in result.get("diffs") or []:
+            lines.append(item.get("name") or "?")
+            for reason in item.get("reasons") or []:
+                lines.append(u"  " + self._format_instance_reason(reason))
+        marked = 0
+        marked_meshes = []
+        try:
+            import instance_detector
+            mark = instance_detector.highlight_point_mismatches(result) or {}
+            marked = int(mark.get("count") or 0)
+            marked_meshes = list(mark.get("meshes") or [])
+        except Exception:
+            marked = 0
+            marked_meshes = []
+        if marked:
+            lines.append(u"")
+            lines.append(i18n.tr("ui_make_inst_marked"))
+        text = u"\n".join(lines)
+        print(to_maya_ui(text))
+        self.lbl_status.setText(i18n.tr("ui_make_inst_title"))
+        dlg = QtWidgets.QDialog(self)
+        dlg.setWindowTitle(i18n.tr("ui_make_inst_title"))
+        dlg.setWindowFlags(
+            QtCore.Qt.Dialog
+            | QtCore.Qt.WindowTitleHint
+            | QtCore.Qt.WindowCloseButtonHint)
+        lay = QtWidgets.QVBoxLayout(dlg)
+        edit = QtWidgets.QPlainTextEdit()
+        edit.setReadOnly(True)
+        edit.setPlainText(text)
+        edit.setMinimumSize(360, 160)
+        lay.addWidget(edit)
+        row = QtWidgets.QHBoxLayout()
+        row.addStretch(1)
+        btn = QtWidgets.QPushButton(i18n.tr("dlg_ok"))
+        btn.clicked.connect(dlg.accept)
+        row.addWidget(btn)
+        lay.addLayout(row)
+        dlg.resize(420, 240)
+        try:
+            dlg.exec_()
+        finally:
+            try:
+                import instance_detector
+                instance_detector.clear_point_mismatch_display()
+            except Exception:
+                pass
+
+    def _show_fuzzy_instance_result(self, result):
+        base = result.get("base") or ""
+        thr = int(result.get("threshold") or 0)
+        converted = int(result.get("converted") or 0)
+        already = int(result.get("already") or 0)
+        skipped = list(result.get("skipped") or [])
+        lines = [
+            i18n.tr("ui_fuzzy_head", base, thr),
+            i18n.tr("ui_fuzzy_summary", converted, already, len(skipped)),
+        ]
+        if skipped:
+            lines.append(u"")
+            lines.append(i18n.tr("ui_fuzzy_skip_head"))
+            for item in skipped:
+                score = item.get("score")
+                if score is None:
+                    score = 0
+                lines.append(
+                    i18n.tr(
+                        "ui_fuzzy_skip_item",
+                        item.get("name") or "?",
+                        score,
+                    ))
+                for reason in item.get("reasons") or []:
+                    lines.append(u"  " + self._format_instance_reason(reason))
+        text = u"\n".join(lines)
+        print(to_maya_ui(text))
+        self.lbl_status.setText(
+            i18n.tr("ui_fuzzy_summary", converted, already, len(skipped)))
+
+        marked_meshes = []
+        if skipped:
+            try:
+                import instance_detector
+                mark = instance_detector.highlight_point_mismatches({
+                    "base_path": result.get("base_path") or "",
+                    "diffs": skipped,
+                }) or {}
+                marked_meshes = list(mark.get("meshes") or [])
+            except Exception:
+                marked_meshes = []
+
+        dlg = QtWidgets.QDialog(self)
+        dlg.setWindowTitle(i18n.tr("ui_btn_fuzzy_inst"))
+        dlg.setWindowFlags(
+            QtCore.Qt.Dialog
+            | QtCore.Qt.WindowTitleHint
+            | QtCore.Qt.WindowCloseButtonHint)
+        lay = QtWidgets.QVBoxLayout(dlg)
+        edit = QtWidgets.QPlainTextEdit()
+        edit.setReadOnly(True)
+        edit.setPlainText(text)
+        edit.setMinimumSize(360, 180)
+        lay.addWidget(edit)
+        row = QtWidgets.QHBoxLayout()
+        row.addStretch(1)
+        btn = QtWidgets.QPushButton(i18n.tr("dlg_ok"))
+        btn.clicked.connect(dlg.accept)
+        row.addWidget(btn)
+        lay.addLayout(row)
+        dlg.resize(440, 260)
+        try:
+            dlg.exec_()
+        finally:
+            try:
+                import instance_detector
+                instance_detector.clear_point_mismatch_display()
+            except Exception:
+                pass
+
     def _on_diagnose(self):
         def _go():
             import Unity_MayaToUnity as pkg
@@ -2237,6 +2660,7 @@ def show_toolbox(force_recreate=False):
             _toolbox = None
 
     close_toolbox()
+    _kill_stale_selection_jobs()
     _delete_workspace_control()
 
     _toolbox = ToolboxWindow()
