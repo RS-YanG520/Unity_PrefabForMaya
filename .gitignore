@@ -45,6 +45,11 @@
 # 崩溃报告
 sysinfo.txt
 
+# === Python 缓存（每次运行重新生成） ===
+__pycache__/
+__pycache__.meta
+*.pyc
+
 # === 操作系统 ===
 .DS_Store
 Thumbs.db
